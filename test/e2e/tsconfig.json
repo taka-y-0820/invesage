@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["testcafe"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts"]
+}
