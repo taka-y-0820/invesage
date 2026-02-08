@@ -88,3 +88,68 @@ export interface AnalysisResult {
   signals: TechnicalSignal[];
   recommendation: "buy" | "hold" | "sell";
 }
+
+// ============================================================================
+// IR情報（Investor Relations）関連の型定義
+// ============================================================================
+
+/** IR情報のカテゴリ */
+export type IRCategory =
+  | "earnings"        // 決算情報
+  | "guidance"        // 業績予想・ガイダンス
+  | "dividend"        // 配当情報
+  | "shareholder"     // 株主向け情報
+  | "corporate"       // コーポレートガバナンス
+  | "disclosure"      // 適時開示
+  | "presentation"    // 説明会資料
+  | "other";          // その他
+
+/** 個別のIRリリース項目 */
+export interface IRRelease {
+  id: string;
+  title: string;
+  category: IRCategory;
+  publishedAt: string;       // ISO 8601 日時
+  summary?: string;
+  url?: string;              // PDFやページへのリンク
+  source: string;            // 情報ソース (TDnet, 企業サイト等)
+}
+
+/** 決算データ（四半期・通期） */
+export interface EarningsData {
+  period: string;            // "2024Q3", "2024FY" 等
+  periodLabel: string;       // "2024年3月期 第3四半期" 等
+  revenue?: number;          // 売上高（百万円）
+  operatingIncome?: number;  // 営業利益（百万円）
+  netIncome?: number;        // 純利益（百万円）
+  eps?: number;              // 一株当たり利益（円）
+  revenueYoY?: number;      // 売上高前年同期比（%）
+  operatingIncomeYoY?: number;
+  netIncomeYoY?: number;
+  isEstimate: boolean;       // 予想値かどうか
+}
+
+/** 配当情報 */
+export interface DividendInfo {
+  fiscalYear: string;        // "2024" 等
+  interimDividend?: number;  // 中間配当（円）
+  finalDividend?: number;    // 期末配当（円）
+  annualDividend?: number;   // 年間配当（円）
+  dividendYield?: number;    // 配当利回り（%）
+  payoutRatio?: number;      // 配当性向（%）
+  exDividendDate?: string;   // 権利落ち日
+  recordDate?: string;       // 基準日
+}
+
+/** 企業のIR情報まとめ */
+export interface CompanyIRInfo {
+  symbol: string;
+  companyName: string;
+  lastUpdated: string;       // 最終更新日時
+  irReleases: IRRelease[];   // IR開示一覧
+  earnings: EarningsData[];  // 決算データ（直近数期分）
+  dividend?: DividendInfo;   // 配当情報
+  nextEarningsDate?: string; // 次回決算発表日
+  irPageUrl?: string;        // IR情報ページURL
+  fiscalYearEnd?: string;    // 決算月 ("3月" 等)
+}

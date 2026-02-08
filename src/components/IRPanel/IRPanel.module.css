@@ -1,0 +1,484 @@
+/* =============================================================================
+   IR Panel - 企業IR情報表示コンポーネント
+   ============================================================================= */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-teal-700), var(--color-teal-900));
+  border-radius: var(--radius-md);
+  color: var(--color-white);
+}
+
+.headerTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+.lastUpdated {
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
+  font-family: var(--font-mono);
+}
+
+/* Search */
+.searchSection {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.searchInput {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  background: var(--color-white);
+  transition: border-color var(--transition-fast);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-teal-500);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
+.searchButton {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-teal-700);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.searchButton:hover {
+  background: var(--color-teal-800);
+}
+
+.searchButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Quick Select */
+.quickSelect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.quickButton {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.quickButton:hover {
+  border-color: var(--color-teal-500);
+  color: var(--color-teal-700);
+  background: var(--color-teal-50);
+}
+
+/* Section */
+.section {
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
+}
+
+.sectionIcon {
+  color: var(--color-teal-600);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.sectionBody {
+  padding: var(--space-5);
+}
+
+/* Earnings Table */
+.earningsTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.earningsTable th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  border-bottom: 2px solid var(--color-divider);
+}
+
+.earningsTable td {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-gray-700);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.earningsTable tr:last-child td {
+  border-bottom: none;
+}
+
+.earningsTable td:not(:first-child) {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.earningsTable th:not(:first-child) {
+  text-align: right;
+}
+
+.estimateBadge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  background: var(--color-caution-light);
+  color: var(--color-caution-dark);
+  margin-left: var(--space-2);
+}
+
+.yoyPositive {
+  color: var(--color-bullish);
+}
+
+.yoyNegative {
+  color: var(--color-bearish);
+}
+
+/* Dividend Card */
+.dividendGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+}
+
+.dividendItem {
+  padding: var(--space-3);
+  background: var(--color-cream);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.dividendLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  margin-bottom: var(--space-1);
+}
+
+.dividendValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+}
+
+/* IR Release List */
+.releaseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.releaseItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.releaseItem:hover {
+  border-color: var(--color-teal-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.releaseCategoryBadge {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: white;
+  white-space: nowrap;
+}
+
+.releaseContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.releaseTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-900);
+  margin: 0 0 var(--space-1) 0;
+  line-height: var(--leading-snug);
+}
+
+.releaseTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.releaseTitle a:hover {
+  color: var(--color-teal-700);
+  text-decoration: underline;
+}
+
+.releaseMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+.releaseSummary {
+  font-size: var(--text-xs);
+  color: var(--color-gray-600);
+  margin: var(--space-1) 0 0 0;
+  line-height: var(--leading-relaxed);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Next Earnings Banner */
+.nextEarningsBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(13, 148, 136, 0.02));
+  border: 1px solid var(--color-teal-200);
+  border-radius: var(--radius-md);
+}
+
+.nextEarningsIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-teal-100);
+  border-radius: var(--radius-md);
+  color: var(--color-teal-700);
+  flex-shrink: 0;
+}
+
+.nextEarningsText {
+  flex: 1;
+}
+
+.nextEarningsLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.nextEarningsDate {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-teal-800);
+}
+
+/* Category Filter */
+.categoryFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0 var(--space-5) var(--space-3);
+}
+
+.categoryChip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--color-divider);
+  background: var(--color-white);
+  font-size: var(--text-xs);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.categoryChip:hover {
+  border-color: var(--color-teal-500);
+}
+
+.categoryChipActive {
+  background: var(--color-teal-700);
+  color: var(--color-white);
+  border-color: var(--color-teal-700);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  color: var(--color-gray-500);
+}
+
+.loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-gray-200);
+  border-top-color: var(--color-teal-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* Error */
+.error {
+  padding: var(--space-4);
+  background: var(--color-bearish-light);
+  border: 1px solid var(--color-bearish);
+  border-radius: var(--radius-md);
+  color: var(--color-bearish-dark);
+  font-size: var(--text-sm);
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--color-gray-400);
+}
+
+.emptyIcon {
+  margin-bottom: var(--space-3);
+}
+
+.emptyText {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* IR Link */
+.irLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  color: var(--color-teal-700);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.irLink:hover {
+  border-color: var(--color-teal-500);
+  background: var(--color-teal-50);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .earningsTable {
+    font-size: var(--text-xs);
+  }
+
+  .earningsTable th,
+  .earningsTable td {
+    padding: var(--space-2);
+  }
+
+  .dividendGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .searchSection {
+    flex-direction: column;
+  }
+}

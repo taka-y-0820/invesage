@@ -1,0 +1,210 @@
+/* =============================================================================
+   MetricCard Component - For displaying key statistics
+   ============================================================================= */
+
+.metricCard {
+  --metric-bg: var(--color-white);
+  --metric-border: var(--color-divider);
+  --metric-text: var(--color-gray-900);
+  --metric-text-muted: var(--color-gray-500);
+  --metric-accent: var(--color-teal-600);
+  --metric-accent-glow: rgba(45, 138, 138, 0.15);
+
+  background: var(--metric-bg);
+  border: 1px solid var(--metric-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Dark variant */
+.metricCardDark {
+  --metric-bg: #111921;
+  --metric-border: rgba(255, 255, 255, 0.06);
+  --metric-text: #e2e8f0;
+  --metric-text-muted: #64748b;
+}
+
+/* Glow effect */
+.metricCard::after {
+  content: "";
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--metric-accent);
+  filter: blur(40px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+/* Color variants */
+.metricCardTeal { --metric-accent: #2dd4bf; --metric-accent-glow: rgba(45, 212, 191, 0.15); }
+.metricCardGold { --metric-accent: #fbbf24; --metric-accent-glow: rgba(251, 191, 36, 0.15); }
+.metricCardBullish { --metric-accent: #10b981; --metric-accent-glow: rgba(16, 185, 129, 0.15); }
+.metricCardBearish { --metric-accent: #ef4444; --metric-accent-glow: rgba(239, 68, 68, 0.15); }
+.metricCardBlue { --metric-accent: #3b82f6; --metric-accent-glow: rgba(59, 130, 246, 0.15); }
+
+/* Header */
+.metricHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+/* Icon */
+.metricIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--metric-accent-glow);
+  color: var(--metric-accent);
+}
+
+.metricIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Badge */
+.metricBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--metric-accent-glow);
+  color: var(--metric-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Label */
+.metricLabel {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--metric-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+/* Value */
+.metricValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  color: var(--metric-text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.metricValueSmall {
+  font-size: var(--text-2xl);
+}
+
+.metricValueLarge {
+  font-size: var(--text-4xl);
+}
+
+/* Colored values */
+.metricValueBullish { color: var(--color-bullish); }
+.metricValueBearish { color: var(--color-bearish); }
+.metricValueTeal { color: #2dd4bf; }
+.metricValueGold { color: #fbbf24; }
+
+/* Subtext */
+.metricSubtext {
+  font-size: var(--text-xs);
+  color: var(--metric-text-muted);
+  margin-top: var(--space-2);
+}
+
+/* Change indicator */
+.metricChange {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin-top: var(--space-2);
+}
+
+.metricChangePositive { color: var(--color-bullish); }
+.metricChangeNegative { color: var(--color-bearish); }
+
+.metricChangeIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Sparkline */
+.metricSparkline {
+  margin-top: var(--space-3);
+  height: 32px;
+}
+
+/* Compact variant */
+.metricCardCompact {
+  padding: var(--space-4);
+}
+
+.metricCardCompact .metricIcon {
+  width: 32px;
+  height: 32px;
+}
+
+.metricCardCompact .metricIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.metricCardCompact .metricValue {
+  font-size: var(--text-2xl);
+}
+
+/* Loading state */
+.metricLoading {
+  opacity: 0.6;
+}
+
+.metricSkeleton {
+  background: linear-gradient(
+    90deg,
+    var(--metric-border) 25%,
+    var(--metric-bg) 50%,
+    var(--metric-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonValue {
+  height: 36px;
+  width: 80%;
+  margin-bottom: var(--space-2);
+}
+
+.skeletonLabel {
+  height: 12px;
+  width: 50%;
+}

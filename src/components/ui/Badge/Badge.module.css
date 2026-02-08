@@ -1,0 +1,188 @@
+/* =============================================================================
+   Badge Component - Status indicators and labels
+   ============================================================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+/* Default */
+.badge {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+/* Variants */
+.badgePrimary {
+  background: var(--color-teal-100);
+  color: var(--color-teal-800);
+}
+
+.badgeSuccess,
+.badgeBullish {
+  background: var(--color-bullish-light);
+  color: var(--color-bullish-dark);
+}
+
+.badgeDanger,
+.badgeBearish {
+  background: var(--color-bearish-light);
+  color: var(--color-bearish-dark);
+}
+
+.badgeWarning {
+  background: var(--color-caution-light);
+  color: var(--color-caution-dark);
+}
+
+.badgeInfo {
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+}
+
+/* Solid variants (filled background) */
+.badgeSolid {
+  color: var(--color-white);
+}
+
+.badgeSolid.badgePrimary {
+  background: var(--color-teal-600);
+}
+
+.badgeSolid.badgeSuccess,
+.badgeSolid.badgeBullish {
+  background: var(--color-bullish);
+}
+
+.badgeSolid.badgeDanger,
+.badgeSolid.badgeBearish {
+  background: var(--color-bearish);
+}
+
+.badgeSolid.badgeWarning {
+  background: var(--color-caution);
+}
+
+.badgeSolid.badgeInfo {
+  background: var(--color-info);
+}
+
+/* Outlined variants */
+.badgeOutlined {
+  background: transparent;
+  border: 1px solid currentColor;
+}
+
+/* Sizes */
+.badgeSmall {
+  font-size: 0.625rem;
+  padding: 2px 6px;
+}
+
+.badgeLarge {
+  font-size: 0.875rem;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+}
+
+/* With dot indicator */
+.badgeDot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Pill shape */
+.badgePill {
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+}
+
+/* Icon in badge */
+.badgeIcon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.badgeLarge .badgeIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Pulse animation for live/active states */
+.badgePulse::before {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+/* Number badge (for counts) */
+.badgeCount {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 20px;
+}
+
+.badgeCount.badgeLarge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+  line-height: 24px;
+}
+
+/* Dark mode variants */
+.badgeDark {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.badgeDark.badgePrimary {
+  background: rgba(45, 212, 191, 0.2);
+  color: #2dd4bf;
+}
+
+.badgeDark.badgeSuccess,
+.badgeDark.badgeBullish {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.badgeDark.badgeDanger,
+.badgeDark.badgeBearish {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.badgeDark.badgeWarning {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.badgeDark.badgeInfo {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}

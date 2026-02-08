@@ -4,7 +4,6 @@ import { useStockStore } from "../store/useStockStore";
 import { useMarketDataUpdater } from "../hooks/useStockData";
 
 const Header: React.FC = () => {
-  const [activeNav, setActiveNav] = useState("screening");
   const [scrolled, setScrolled] = useState(false);
   const marketData = useStockStore((state) => state.marketData);
 
@@ -39,13 +38,6 @@ const Header: React.FC = () => {
       50% { box-shadow: 0 0 30px rgba(52, 152, 219, 0.6); }
     }
   `;
-
-  const navItems = [
-    { id: "screening", label: "スクリーニング", icon: "🔍" },
-    { id: "technical", label: "テクニカル分析", icon: "📊" },
-    { id: "fundamental", label: "ファンダメンタル分析", icon: "📈" },
-    { id: "watchlist", label: "ウォッチリスト", icon: "⭐" },
-  ];
 
   return (
     <>
@@ -214,83 +206,6 @@ const Header: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {/* ナビゲーション */}
-          <nav
-            style={{
-              display: "flex",
-              gap: "8px",
-              animation: "slideIn 1s ease-out 0.4s both",
-            }}
-          >
-            {navItems.map((item, index) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveNav(item.id)}
-                style={{
-                  background:
-                    activeNav === item.id
-                      ? "linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%)"
-                      : "rgba(255, 255, 255, 0.05)",
-                  color: "white",
-                  border:
-                    activeNav === item.id
-                      ? "1px solid rgba(59, 130, 246, 0.3)"
-                      : "1px solid rgba(255, 255, 255, 0.1)",
-                  padding: "10px 18px",
-                  borderRadius: "12px",
-                  cursor: "pointer",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  backdropFilter: "blur(10px)",
-                  WebkitBackdropFilter: "blur(10px)",
-                  position: "relative",
-                  overflow: "hidden",
-                  animation: `slideIn 0.6s ease-out ${0.1 * index}s both`,
-                }}
-                onMouseEnter={(e) => {
-                  if (activeNav !== item.id) {
-                    e.currentTarget.style.background =
-                      "rgba(255, 255, 255, 0.1)";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 24px rgba(0, 0, 0, 0.2)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeNav !== item.id) {
-                    e.currentTarget.style.background =
-                      "rgba(255, 255, 255, 0.05)";
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }
-                }}
-              >
-                {activeNav === item.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background:
-                        "linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)",
-                      animation: "pulse 2s ease-in-out infinite",
-                    }}
-                  />
-                )}
-                <span style={{ fontSize: "16px" }}>{item.icon}</span>
-                <span style={{ position: "relative", zIndex: 1 }}>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </nav>
         </div>
 
         {/* 下部のグラデーションライン */}

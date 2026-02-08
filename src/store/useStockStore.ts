@@ -5,7 +5,9 @@ import {
   TechnicalSignal,
   CompanyProfile,
   NewsSentiment,
+  CompanyIRInfo,
 } from "../types";
+import type { TabId } from "../components/TabNavigation";
 
 interface MarketData {
   symbol: string;
@@ -14,7 +16,20 @@ interface MarketData {
   trend: "up" | "down";
 }
 
+interface SelectedStock {
+  symbol: string;
+  name?: string;
+  price?: number;
+  change?: number;
+  changePercent?: number;
+}
+
 interface StockStore {
+  // UI State
+  activeTab: TabId;
+  selectedStock: SelectedStock | null;
+  isDetailPanelOpen: boolean;
+
   // 市場データ
   marketData: {
     nikkei: MarketData;
@@ -34,6 +49,9 @@ interface StockStore {
   companyProfiles: Record<string, CompanyProfile>;
   newsSentiments: Record<string, NewsSentiment>;
 
+  // IR情報
+  irInfoCache: Record<string, CompanyIRInfo>;
+
   // スクリーニング結果
   screeningResults: ScreeningResult[];
 
@@ -48,6 +66,12 @@ interface StockStore {
   autoUpdateEnabled: boolean;
   updateInterval: number; // ミリ秒
 
+  // UI Actions
+  setActiveTab: (tab: TabId) => void;
+  setSelectedStock: (stock: SelectedStock | null) => void;
+  openDetailPanel: (stock: SelectedStock) => void;
+  closeDetailPanel: () => void;
+
   // アクション
   setMarketData: (data: Partial<StockStore["marketData"]>) => void;
   setCurrentStock: (
@@ -57,6 +81,7 @@ interface StockStore {
   ) => void;
   setCompanyProfile: (symbol: string, profile: CompanyProfile) => void;
   setNewsSentiment: (symbol: string, sentiment: NewsSentiment) => void;
+  setIRInfo: (symbol: string, irInfo: CompanyIRInfo) => void;
   setScreeningResults: (results: ScreeningResult[]) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
@@ -89,6 +114,11 @@ const initialMarketData = {
 };
 
 export const useStockStore = create<StockStore>((set) => ({
+  // UI State
+  activeTab: "dashboard" as TabId,
+  selectedStock: null,
+  isDetailPanelOpen: false,
+
   // 初期状態
   marketData: initialMarketData,
 
@@ -103,12 +133,31 @@ export const useStockStore = create<StockStore>((set) => ({
   companyProfiles: {},
   newsSentiments: {},
 
+  // IR情報
+  irInfoCache: {},
+
   screeningResults: [],
   watchlist: ["NVDA", "MSFT", "GOOGL", "AAPL", "TSLA"],
   isLoading: false,
   error: null,
   autoUpdateEnabled: true,
   updateInterval: 60000, // 1分
+
+  // UI Actions
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
+  setSelectedStock: (stock) => set({ selectedStock: stock }),
+
+  openDetailPanel: (stock) =>
+    set({
+      selectedStock: stock,
+      isDetailPanelOpen: true,
+    }),
+
+  closeDetailPanel: () =>
+    set({
+      isDetailPanelOpen: false,
+    }),
 
   // アクション実装
   setMarketData: (data) =>
@@ -140,6 +189,14 @@ export const useStockStore = create<StockStore>((set) => ({
       newsSentiments: {
         ...state.newsSentiments,
         [symbol]: sentiment,
+      },
+    })),
+
+  setIRInfo: (symbol, irInfo) =>
+    set((state) => ({
+      irInfoCache: {
+        ...state.irInfoCache,
+        [symbol]: irInfo,
       },
     })),
 

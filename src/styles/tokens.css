@@ -1,0 +1,210 @@
+/* =============================================================================
+   Design Tokens - Invesage Design System
+   Editorial Data-Viz aesthetic combining financial publication credibility
+   with modern data visualization
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     Primary Colors (from owl logo)
+     --------------------------------------------------------------------------- */
+  --color-teal-900: #1a5f5f;
+  --color-teal-800: #237070;
+  --color-teal-700: #2a7b7b;
+  --color-teal-600: #358888;
+  --color-teal-500: #409999;
+  --color-teal-400: #5aacac;
+  --color-teal-300: #7dbfbf;
+  --color-teal-200: #a8d5d5;
+  --color-teal-100: #d4eaea;
+  --color-teal-50: #eef7f7;
+
+  --color-gold: #d4a84b;
+  --color-gold-light: #e5c478;
+  --color-gold-dark: #b8923f;
+
+  /* ---------------------------------------------------------------------------
+     Semantic Colors
+     --------------------------------------------------------------------------- */
+  --color-bullish: #2d8a6e;
+  --color-bullish-light: #dcfce7;
+  --color-bullish-dark: #166534;
+
+  --color-bearish: #c94a4a;
+  --color-bearish-light: #fee2e2;
+  --color-bearish-dark: #991b1b;
+
+  --color-caution: #d4a84b;
+  --color-caution-light: #fef3c7;
+  --color-caution-dark: #92400e;
+
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  --color-info-dark: #1e40af;
+
+  /* ---------------------------------------------------------------------------
+     Surface Colors
+     --------------------------------------------------------------------------- */
+  --color-cream: #f8f5f0;
+  --color-cream-dark: #f0ebe3;
+  --color-white: #ffffff;
+  --color-dark-panel: #1c2127;
+  --color-dark-panel-light: #252b33;
+
+  /* ---------------------------------------------------------------------------
+     Neutral Colors
+     --------------------------------------------------------------------------- */
+  --color-gray-900: #1a1a1a;
+  --color-gray-800: #2d2d2d;
+  --color-gray-700: #404040;
+  --color-gray-600: #525252;
+  --color-gray-500: #737373;
+  --color-gray-400: #a3a3a3;
+  --color-gray-300: #d4d4d4;
+  --color-gray-200: #e5e5e5;
+  --color-gray-100: #f5f5f5;
+  --color-gray-50: #fafafa;
+
+  /* ---------------------------------------------------------------------------
+     Border & Divider Colors
+     --------------------------------------------------------------------------- */
+  --color-divider: #e8e5e0;
+  --color-divider-light: #f0ede8;
+  --color-divider-dark: #d8d5d0;
+  --color-border: #d4d4d4;
+  --color-border-light: #e5e5e5;
+
+  /* ---------------------------------------------------------------------------
+     Typography
+     --------------------------------------------------------------------------- */
+  --font-primary: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ---------------------------------------------------------------------------
+     Spacing
+     --------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+
+  /* ---------------------------------------------------------------------------
+     Border Radius
+     --------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;
+
+  /* ---------------------------------------------------------------------------
+     Shadows
+     --------------------------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Card-specific shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.08);
+
+  /* ---------------------------------------------------------------------------
+     Transitions
+     --------------------------------------------------------------------------- */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-slower: 500ms ease;
+
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ---------------------------------------------------------------------------
+     Z-Index Scale
+     --------------------------------------------------------------------------- */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+
+  /* ---------------------------------------------------------------------------
+     Layout
+     --------------------------------------------------------------------------- */
+  --max-width-sm: 640px;
+  --max-width-md: 768px;
+  --max-width-lg: 1024px;
+  --max-width-xl: 1280px;
+  --max-width-2xl: 1400px;
+
+  --sidebar-width: 280px;
+  --header-height: 64px;
+  --tab-bar-height: 48px;
+}
+
+/* =============================================================================
+   Dark Mode Overrides (for chart panels and dark sections)
+   ============================================================================= */
+[data-theme="dark"],
+.dark-theme {
+  --color-cream: #1c2127;
+  --color-cream-dark: #252b33;
+  --color-white: #252b33;
+  --color-divider: #3a4250;
+  --color-border: #4a5568;
+  --color-gray-100: #2d3748;
+  --color-gray-200: #4a5568;
+}

@@ -1,0 +1,137 @@
+/* =============================================================================
+   Tab Navigation Component Styles
+   ============================================================================= */
+
+.tabNavigation {
+  position: sticky;
+  top: var(--header-height);
+  z-index: var(--z-sticky);
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-divider);
+  box-shadow: var(--shadow-xs);
+}
+
+.tabContainer {
+  max-width: var(--max-width-2xl);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: transparent;
+  border: none;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--color-teal-700);
+  background: var(--color-teal-50);
+}
+
+.tab.active {
+  color: var(--color-teal-900);
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-5);
+  right: var(--space-5);
+  height: 2px;
+  background: var(--color-teal-700);
+  transform: scaleX(0);
+  transition: transform var(--transition-base);
+}
+
+.tab.active::after {
+  transform: scaleX(1);
+}
+
+.tabIcon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
+.tab.active .tabIcon {
+  opacity: 1;
+}
+
+/* Tab Badge (for alerts) */
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background: var(--color-bearish);
+  color: var(--color-white);
+  font-size: 10px;
+  font-weight: var(--font-bold);
+  border-radius: var(--radius-full);
+  margin-left: var(--space-1);
+}
+
+.tabBadge.warning {
+  background: var(--color-caution);
+}
+
+.tabBadge.info {
+  background: var(--color-info);
+}
+
+/* Tab Content Area */
+.tabContent {
+  animation: tabContentIn 0.25s var(--ease-out) forwards;
+}
+
+@keyframes tabContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tabContainer {
+    padding: 0 var(--space-4);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tabContainer::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-xs);
+  }
+
+  .tabIcon {
+    width: 16px;
+    height: 16px;
+  }
+}

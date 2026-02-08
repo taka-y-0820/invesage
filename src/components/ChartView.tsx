@@ -206,69 +206,70 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
   }, [stockData, signals, symbol]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "20px",
+          marginBottom: "var(--space-5)",
+          flexWrap: "wrap",
+          gap: "var(--space-4)",
         }}
       >
         <div>
-          <h2 style={{ margin: 0, color: "#333" }}>
-            今後上がる企業スクリーニング
+          <h2 style={{
+            margin: 0,
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-2xl)",
+            fontWeight: "var(--font-semibold)",
+            color: "var(--color-gray-900)"
+          }}>
+            Stock Screening
           </h2>
           {currentStock.lastUpdate && (
-            <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#666" }}>
-              最終更新:{" "}
+            <p style={{
+              margin: "var(--space-1) 0 0 0",
+              fontSize: "var(--text-xs)",
+              color: "var(--color-gray-500)",
+              fontFamily: "var(--font-mono)"
+            }}>
+              Last updated:{" "}
               {new Date(currentStock.lastUpdate).toLocaleTimeString("ja-JP")}
             </p>
           )}
         </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
           {isLoading && (
-            <span style={{ fontSize: "14px", color: "#666" }}>更新中...</span>
+            <span style={{
+              fontSize: "var(--text-sm)",
+              color: "var(--color-gray-500)",
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-2)"
+            }}>
+              <span className="spinner spinner-sm" />
+              Updating...
+            </span>
           )}
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: isLoading ? "#6c757d" : "#17a2b8",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: isLoading ? "not-allowed" : "pointer",
-            }}
+            className="btn btn-secondary"
           >
-            🔄 更新
+            Refresh
           </button>
           <button
             onClick={() => setShowScreening(!showScreening)}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: showScreening ? "#28a745" : "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            className={`btn ${showScreening ? "btn-primary" : "btn-ghost"}`}
           >
-            {showScreening ? "スクリーニング結果" : "スクリーニングを表示"}
+            {showScreening ? "Screening" : "Show Screening"}
           </button>
           <button
             onClick={() => setShowAnalysis(!showAnalysis)}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: showAnalysis ? "#007bff" : "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            className={`btn ${showAnalysis ? "btn-primary" : "btn-ghost"}`}
           >
-            {showAnalysis ? "詳細分析" : "詳細分析を表示"}
+            {showAnalysis ? "Analysis" : "Show Analysis"}
           </button>
         </div>
       </div>
@@ -276,27 +277,31 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
       {error && (
         <div
           style={{
-            padding: "16px",
-            backgroundColor: "#f8d7da",
-            border: "1px solid #f5c6cb",
-            borderRadius: "4px",
-            color: "#721c24",
+            padding: "var(--space-4)",
+            backgroundColor: "var(--color-bearish-light)",
+            border: "1px solid var(--color-bearish)",
+            borderLeft: "4px solid var(--color-bearish)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--color-bearish-dark)",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-3)",
           }}
         >
-          ⚠️ {error}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          <span style={{ flex: 1 }}>{error}</span>
           <button
             onClick={() => refetch()}
+            className="btn"
             style={{
-              marginLeft: "12px",
-              padding: "4px 12px",
-              backgroundColor: "#721c24",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
+              backgroundColor: "var(--color-bearish-dark)",
+              color: "var(--color-white)",
             }}
           >
-            再試行
+            Retry
           </button>
         </div>
       )}
@@ -304,128 +309,164 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
       {showScreening && (
         <div
           style={{
-            marginBottom: "24px",
-            padding: "20px",
-            backgroundColor: "#f8f9fa",
-            borderRadius: "8px",
-            border: "1px solid #dee2e6",
+            marginBottom: "var(--space-6)",
+            padding: "var(--space-5)",
+            backgroundColor: "var(--color-cream)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--color-divider)",
           }}
         >
-          <h3 style={{ margin: "0 0 16px 0", color: "#495057" }}>
-            上昇期待企業ランキング
+          <h3 style={{
+            margin: "0 0 var(--space-4) 0",
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-xl)",
+            fontWeight: "var(--font-semibold)",
+            color: "var(--color-gray-900)"
+          }}>
+            Top Stocks Ranking
           </h3>
-          <div style={{ display: "grid", gap: "12px" }}>
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
             {screeningResults.map((result, index) => (
               <div
                 key={result.symbol}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "40px 80px 200px 1fr 100px 100px 120px",
+                  gridTemplateColumns: "40px 80px 180px 1fr 80px 80px 100px",
                   alignItems: "center",
-                  padding: "12px 16px",
-                  backgroundColor: "white",
-                  borderRadius: "6px",
-                  border: "1px solid #e9ecef",
-                  gap: "12px",
+                  padding: "var(--space-3) var(--space-4)",
+                  backgroundColor: "var(--color-white)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--color-divider)",
+                  gap: "var(--space-3)",
+                  transition: "all var(--transition-fast)",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
                 <div
                   style={{
                     width: "28px",
                     height: "28px",
-                    backgroundColor: index < 3 ? "#ffd700" : "#e9ecef",
-                    borderRadius: "50%",
+                    backgroundColor: index < 3 ? "var(--color-gold)" : "var(--color-gray-200)",
+                    borderRadius: "var(--radius-full)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    color: index < 3 ? "#333" : "#6c757d",
+                    fontSize: "var(--text-sm)",
+                    fontWeight: "var(--font-bold)",
+                    color: index < 3 ? "var(--color-white)" : "var(--color-gray-600)",
                   }}
                 >
                   {index + 1}
                 </div>
-                <div style={{ fontWeight: "bold", fontSize: "16px" }}>
+                <div style={{
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: "var(--font-bold)",
+                  fontSize: "var(--text-base)",
+                  color: "var(--color-gray-900)"
+                }}>
                   {result.symbol}
                 </div>
                 <div>
-                  <div style={{ fontSize: "14px", fontWeight: "500" }}>
+                  <div style={{
+                    fontSize: "var(--text-sm)",
+                    fontWeight: "var(--font-medium)",
+                    color: "var(--color-gray-900)"
+                  }}>
                     {result.companyName}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#6c757d" }}>
+                  <div style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-gray-500)"
+                  }}>
                     {result.sector}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
                   {result.signals.slice(0, 2).map((signal, i) => (
                     <span
                       key={i}
+                      className="badge"
                       style={{
-                        fontSize: "11px",
-                        padding: "2px 6px",
-                        borderRadius: "12px",
                         backgroundColor:
                           signal.strength === "strong"
-                            ? "#dc3545"
+                            ? "var(--color-bearish-light)"
                             : signal.strength === "moderate"
-                            ? "#ffc107"
-                            : "#28a745",
-                        color: "white",
+                            ? "var(--color-caution-light)"
+                            : "var(--color-bullish-light)",
+                        color:
+                          signal.strength === "strong"
+                            ? "var(--color-bearish-dark)"
+                            : signal.strength === "moderate"
+                            ? "var(--color-caution-dark)"
+                            : "var(--color-bullish-dark)",
                       }}
                     >
                       {signal.type === "volume_spike"
-                        ? "出来高↑"
+                        ? "Volume"
                         : signal.type === "breakout"
-                        ? "ブレイク"
+                        ? "Breakout"
                         : signal.type === "momentum"
-                        ? "モメンタム"
-                        : "パターン"}
+                        ? "Momentum"
+                        : "Pattern"}
                     </span>
                   ))}
                 </div>
                 <div
                   style={{
-                    fontSize: "18px",
-                    fontWeight: "bold",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--text-lg)",
+                    fontWeight: "var(--font-bold)",
                     color:
                       result.overallScore >= 80
-                        ? "#28a745"
+                        ? "var(--color-bullish)"
                         : result.overallScore >= 60
-                        ? "#ffc107"
-                        : "#dc3545",
+                        ? "var(--color-caution)"
+                        : "var(--color-bearish)",
                   }}
                 >
                   {result.overallScore.toFixed(0)}
                 </div>
                 <div
                   style={{
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    color: result.priceChange24h > 0 ? "#28a745" : "#dc3545",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--text-sm)",
+                    fontWeight: "var(--font-semibold)",
+                    color: result.priceChange24h > 0 ? "var(--color-bullish)" : "var(--color-bearish)",
                   }}
                 >
                   {result.priceChange24h > 0 ? "+" : ""}
                   {result.priceChange24h.toFixed(1)}%
                 </div>
-                <div
+                <span
+                  className="badge"
                   style={{
-                    fontSize: "12px",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
                     backgroundColor:
                       result.category === "高成長期待"
-                        ? "#28a745"
+                        ? "var(--color-bullish)"
                         : result.category === "成長有望"
-                        ? "#17a2b8"
+                        ? "var(--color-teal-600)"
                         : result.category === "安定成長"
-                        ? "#ffc107"
-                        : "#6c757d",
-                    color: "white",
-                    textAlign: "center",
+                        ? "var(--color-caution)"
+                        : "var(--color-gray-500)",
+                    color: "var(--color-white)",
                   }}
                 >
-                  {result.category}
-                </div>
+                  {result.category === "高成長期待"
+                    ? "High Growth"
+                    : result.category === "成長有望"
+                    ? "Promising"
+                    : result.category === "安定成長"
+                    ? "Stable"
+                    : result.category}
+                </span>
               </div>
             ))}
           </div>
@@ -437,10 +478,12 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
         style={{
           width: "100%",
           height: "400px",
-          border: "1px solid #ddd",
-          marginBottom: "20px",
+          border: "1px solid var(--color-divider)",
+          borderRadius: "var(--radius-md)",
+          marginBottom: "var(--space-5)",
           position: "relative",
-          backgroundColor: "#f8f9fa",
+          backgroundColor: "var(--color-white)",
+          overflow: "hidden",
         }}
       >
         {isLoading && stockData.length === 0 && (
@@ -453,9 +496,9 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>📊</div>
-            <div style={{ fontSize: "14px", color: "#666" }}>
-              データ読み込み中...
+            <div className="spinner spinner-lg" style={{ marginBottom: "var(--space-3)" }} />
+            <div style={{ fontSize: "var(--text-sm)", color: "var(--color-gray-500)" }}>
+              Loading data...
             </div>
           </div>
         )}
@@ -467,11 +510,15 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
               left: "50%",
               transform: "translate(-50%, -50%)",
               textAlign: "center",
+              color: "var(--color-gray-400)",
             }}
           >
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>📈</div>
-            <div style={{ fontSize: "14px", color: "#666" }}>
-              データがありません
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: "var(--space-3)" }}>
+              <path d="M3 3v18h18" />
+              <path d="M18 17V9M13 17V5M8 17v-3" />
+            </svg>
+            <div style={{ fontSize: "var(--text-sm)" }}>
+              No data available
             </div>
           </div>
         )}
@@ -480,59 +527,80 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
       {showAnalysis && analysis && (
         <div
           style={{
-            padding: "20px",
-            backgroundColor: "#f8f9fa",
-            borderRadius: "8px",
-            border: "1px solid #dee2e6",
+            padding: "var(--space-5)",
+            backgroundColor: "var(--color-cream)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--color-divider)",
           }}
         >
-          <h3 style={{ margin: "0 0 15px 0", color: "#495057" }}>
-            投資分析結果
+          <h3 style={{
+            margin: "0 0 var(--space-4) 0",
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-xl)",
+            fontWeight: "var(--font-semibold)",
+            color: "var(--color-gray-900)"
+          }}>
+            Investment Analysis
           </h3>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "15px",
-              marginBottom: "20px",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: "var(--space-4)",
+              marginBottom: "var(--space-5)",
             }}
           >
             <div
               style={{
-                padding: "10px",
-                backgroundColor: "white",
-                borderRadius: "4px",
+                padding: "var(--space-4)",
+                backgroundColor: "var(--color-white)",
+                borderRadius: "var(--radius-md)",
               }}
             >
-              <div style={{ fontSize: "14px", color: "#6c757d" }}>
-                総合スコア
+              <div style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-gray-500)",
+                textTransform: "uppercase",
+                letterSpacing: "var(--tracking-wider)",
+                marginBottom: "var(--space-1)"
+              }}>
+                Overall Score
               </div>
               <div
                 style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: analysis.overallScore >= 70 ? "#28a745" : "#ffc107",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "var(--text-2xl)",
+                  fontWeight: "var(--font-bold)",
+                  color: analysis.overallScore >= 70 ? "var(--color-bullish)" : "var(--color-caution)",
                 }}
               >
-                {analysis.overallScore.toFixed(1)}/100
+                {analysis.overallScore.toFixed(1)}
+                <span style={{ fontSize: "var(--text-sm)", color: "var(--color-gray-400)" }}>/100</span>
               </div>
             </div>
             <div
               style={{
-                padding: "10px",
-                backgroundColor: "white",
-                borderRadius: "4px",
+                padding: "var(--space-4)",
+                backgroundColor: "var(--color-white)",
+                borderRadius: "var(--radius-md)",
               }}
             >
-              <div style={{ fontSize: "14px", color: "#6c757d" }}>
-                テクニカル
+              <div style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-gray-500)",
+                textTransform: "uppercase",
+                letterSpacing: "var(--tracking-wider)",
+                marginBottom: "var(--space-1)"
+              }}>
+                Technical
               </div>
               <div
                 style={{
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "#007bff",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "var(--text-xl)",
+                  fontWeight: "var(--font-bold)",
+                  color: "var(--color-info)",
                 }}
               >
                 {analysis.technicalScore.toFixed(1)}
@@ -540,19 +608,26 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
             </div>
             <div
               style={{
-                padding: "10px",
-                backgroundColor: "white",
-                borderRadius: "4px",
+                padding: "var(--space-4)",
+                backgroundColor: "var(--color-white)",
+                borderRadius: "var(--radius-md)",
               }}
             >
-              <div style={{ fontSize: "14px", color: "#6c757d" }}>
-                ファンダメンタルズ
+              <div style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-gray-500)",
+                textTransform: "uppercase",
+                letterSpacing: "var(--tracking-wider)",
+                marginBottom: "var(--space-1)"
+              }}>
+                Fundamental
               </div>
               <div
                 style={{
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "#17a2b8",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "var(--text-xl)",
+                  fontWeight: "var(--font-bold)",
+                  color: "var(--color-teal-600)",
                 }}
               >
                 {analysis.fundamentalScore.toFixed(1)}
@@ -560,22 +635,31 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
             </div>
             <div
               style={{
-                padding: "10px",
-                backgroundColor: "white",
-                borderRadius: "4px",
+                padding: "var(--space-4)",
+                backgroundColor: "var(--color-white)",
+                borderRadius: "var(--radius-md)",
               }}
             >
-              <div style={{ fontSize: "14px", color: "#6c757d" }}>推奨</div>
+              <div style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--color-gray-500)",
+                textTransform: "uppercase",
+                letterSpacing: "var(--tracking-wider)",
+                marginBottom: "var(--space-1)"
+              }}>
+                Recommendation
+              </div>
               <div
                 style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "var(--text-lg)",
+                  fontWeight: "var(--font-bold)",
                   color:
                     analysis.recommendation === "buy"
-                      ? "#28a745"
+                      ? "var(--color-bullish)"
                       : analysis.recommendation === "hold"
-                      ? "#ffc107"
-                      : "#dc3545",
+                      ? "var(--color-caution)"
+                      : "var(--color-bearish)",
                 }}
               >
                 {analysis.recommendation.toUpperCase()}
@@ -585,26 +669,31 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
 
           {signals.length > 0 && (
             <div>
-              <h4 style={{ margin: "0 0 10px 0", color: "#495057" }}>
-                検出されたシグナル
+              <h4 style={{
+                margin: "0 0 var(--space-3) 0",
+                fontSize: "var(--text-base)",
+                fontWeight: "var(--font-semibold)",
+                color: "var(--color-gray-800)"
+              }}>
+                Detected Signals
               </h4>
               <div
-                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+                style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}
               >
                 {signals.map((signal, index) => (
                   <div
                     key={index}
                     style={{
-                      padding: "8px 12px",
-                      backgroundColor: "white",
+                      padding: "var(--space-3) var(--space-4)",
+                      backgroundColor: "var(--color-white)",
                       borderLeft: `4px solid ${
                         signal.strength === "strong"
-                          ? "#dc3545"
+                          ? "var(--color-bearish)"
                           : signal.strength === "moderate"
-                          ? "#ffc107"
-                          : "#28a745"
+                          ? "var(--color-caution)"
+                          : "var(--color-bullish)"
                       }`,
-                      borderRadius: "4px",
+                      borderRadius: "var(--radius-md)",
                     }}
                   >
                     <div
@@ -614,41 +703,42 @@ const ChartView: React.FC<ChartViewProps> = ({ symbol = "NVDA" }) => {
                         alignItems: "center",
                       }}
                     >
-                      <span style={{ fontWeight: "bold", color: "#495057" }}>
+                      <span style={{
+                        fontWeight: "var(--font-semibold)",
+                        color: "var(--color-gray-800)"
+                      }}>
                         {signal.type === "volume_spike"
-                          ? "出来高急増"
+                          ? "Volume Spike"
                           : signal.type === "breakout"
-                          ? "ブレイクアウト"
+                          ? "Breakout"
                           : signal.type === "momentum"
-                          ? "モメンタム"
-                          : "パターン"}
+                          ? "Momentum"
+                          : "Pattern"}
                       </span>
                       <span
+                        className="badge"
                         style={{
-                          fontSize: "12px",
-                          padding: "2px 6px",
-                          borderRadius: "12px",
                           backgroundColor:
                             signal.strength === "strong"
-                              ? "#dc3545"
+                              ? "var(--color-bearish)"
                               : signal.strength === "moderate"
-                              ? "#ffc107"
-                              : "#28a745",
-                          color: "white",
+                              ? "var(--color-caution)"
+                              : "var(--color-bullish)",
+                          color: "var(--color-white)",
                         }}
                       >
                         {signal.strength === "strong"
-                          ? "強"
+                          ? "Strong"
                           : signal.strength === "moderate"
-                          ? "中"
-                          : "弱"}
+                          ? "Moderate"
+                          : "Weak"}
                       </span>
                     </div>
                     <div
                       style={{
-                        fontSize: "14px",
-                        color: "#6c757d",
-                        marginTop: "4px",
+                        fontSize: "var(--text-sm)",
+                        color: "var(--color-gray-600)",
+                        marginTop: "var(--space-1)",
                       }}
                     >
                       {signal.description}
