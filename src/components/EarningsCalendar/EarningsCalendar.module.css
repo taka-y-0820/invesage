@@ -1,0 +1,612 @@
+/* =============================================================================
+   Earnings Calendar - 決算日カレンダーコンポーネント
+   ============================================================================= */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-teal-700), var(--color-teal-900));
+  border-radius: var(--radius-md);
+  color: var(--color-white);
+}
+
+.headerTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+/* Month Navigation */
+.monthNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.monthNavButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.monthNavButton:hover {
+  border-color: var(--color-teal-500);
+  color: var(--color-teal-700);
+  background: var(--color-teal-50);
+}
+
+.monthLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  min-width: 120px;
+  text-align: center;
+}
+
+.todayButton {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-teal-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-teal-50);
+  color: var(--color-teal-700);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.todayButton:hover {
+  background: var(--color-teal-100);
+  border-color: var(--color-teal-500);
+}
+
+/* Filter Toggle */
+.filterSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filterLabel {
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+}
+
+.filterToggle {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  background: var(--color-white);
+  font-size: var(--text-xs);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filterToggle:hover {
+  border-color: var(--color-teal-500);
+}
+
+.filterToggleActive {
+  background: var(--color-teal-700);
+  color: var(--color-white);
+  border-color: var(--color-teal-700);
+}
+
+/* Calendar Grid */
+.calendarGrid {
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.weekdayHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 2px solid var(--color-divider);
+  background: var(--color-cream);
+}
+
+.weekdayCell {
+  padding: var(--space-2) var(--space-1);
+  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.weekdayCell:first-child {
+  color: var(--color-bearish);
+}
+
+.weekdayCell:last-child {
+  color: var(--color-info);
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* Day Cell */
+.dayCell {
+  min-height: 90px;
+  padding: var(--space-1);
+  border-right: 1px solid var(--color-divider-light);
+  border-bottom: 1px solid var(--color-divider-light);
+  background: var(--color-white);
+  transition: background var(--transition-fast);
+  cursor: default;
+}
+
+.dayCell:nth-child(7n) {
+  border-right: none;
+}
+
+.dayCell:hover {
+  background: var(--color-gray-50);
+}
+
+.dayCellOutside {
+  background: var(--color-cream);
+  opacity: 0.5;
+}
+
+.dayCellToday {
+  background: rgba(13, 148, 136, 0.04);
+}
+
+.dayCellHasEvents {
+  cursor: pointer;
+}
+
+.dayCellHasEvents:hover {
+  background: rgba(13, 148, 136, 0.06);
+}
+
+.dayNumber {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+.dayNumberToday {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--color-teal-700);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-bold);
+}
+
+.dayNumberSunday {
+  color: var(--color-bearish);
+}
+
+.dayNumberSaturday {
+  color: var(--color-info);
+}
+
+/* Event Chips in Calendar */
+.eventChips {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.eventChip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all var(--transition-fast);
+}
+
+.eventChipUpcoming {
+  background: var(--color-caution-light);
+  color: var(--color-caution-dark);
+}
+
+.eventChipReported {
+  background: var(--color-bullish-light);
+  color: var(--color-bullish-dark);
+}
+
+.eventChipBeat {
+  background: var(--color-bullish-light);
+  color: var(--color-bullish);
+}
+
+.eventChipMiss {
+  background: var(--color-bearish-light);
+  color: var(--color-bearish);
+}
+
+.eventChipMore {
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
+  font-size: 9px;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Events List (below calendar) */
+.eventsSection {
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.eventsSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
+}
+
+.eventsSectionIcon {
+  color: var(--color-teal-600);
+  flex-shrink: 0;
+}
+
+.eventsSectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.eventsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-divider-light);
+  transition: background var(--transition-fast);
+}
+
+.eventItem:last-child {
+  border-bottom: none;
+}
+
+.eventItem:hover {
+  background: var(--color-gray-50);
+}
+
+.eventDate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+  padding: var(--space-2);
+  background: var(--color-cream);
+  border-radius: var(--radius-md);
+}
+
+.eventDateDay {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  line-height: 1;
+}
+
+.eventDateWeekday {
+  font-size: 9px;
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  margin-top: 2px;
+}
+
+.eventInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.eventSymbol {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+}
+
+.eventCompanyName {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+  margin-left: var(--space-2);
+}
+
+.eventPeriod {
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
+}
+
+.eventHourBadge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
+  margin-left: var(--space-2);
+}
+
+.eventMetrics {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.eventMetric {
+  text-align: right;
+}
+
+.eventMetricLabel {
+  font-size: 9px;
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+.eventMetricValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-700);
+}
+
+.eventMetricEstimate {
+  color: var(--color-gray-400);
+}
+
+.eventMetricBeat {
+  color: var(--color-bullish);
+}
+
+.eventMetricMiss {
+  color: var(--color-bearish);
+}
+
+/* Status Badge */
+.statusBadge {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+.statusUpcoming {
+  background: var(--color-caution-light);
+  color: var(--color-caution-dark);
+}
+
+.statusReported {
+  background: var(--color-bullish-light);
+  color: var(--color-bullish-dark);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  color: var(--color-gray-500);
+}
+
+.loadingSpinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-gray-200);
+  border-top-color: var(--color-teal-600);
+  border-right-color: var(--color-teal-400);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loadingText {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Error */
+.error {
+  padding: var(--space-4);
+  background: var(--color-bearish-light);
+  border: 1px solid var(--color-bearish);
+  border-radius: var(--radius-md);
+  color: var(--color-bearish-dark);
+  font-size: var(--text-sm);
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--color-gray-400);
+}
+
+.emptyIcon {
+  margin-bottom: var(--space-3);
+}
+
+.emptyText {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* Summary Stats */
+.summaryBar {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.summaryDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.summaryDotUpcoming {
+  background: var(--color-caution);
+}
+
+.summaryDotReported {
+  background: var(--color-bullish);
+}
+
+.summaryDotTotal {
+  background: var(--color-teal-600);
+}
+
+.summaryLabel {
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
+}
+
+.summaryValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dayCell {
+    min-height: 60px;
+  }
+
+  .eventChip {
+    font-size: 9px;
+  }
+
+  .eventMetrics {
+    display: none;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .dayCell {
+    min-height: 50px;
+  }
+
+  .eventChips {
+    display: none;
+  }
+
+  .dayCellHasEvents {
+    position: relative;
+  }
+
+  .dayCellHasEvents::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background: var(--color-caution);
+    border-radius: var(--radius-full);
+  }
+}

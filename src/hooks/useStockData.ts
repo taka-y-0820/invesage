@@ -1,9 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useStockStore } from "../store/useStockStore";
 import {
-  fetchStockHistoryAlphaVantage,
-  fetchMarketData,
-  getRecommendedUpdateInterval,
+  fetchStockHistory,
+  fetchStockQuote,
 } from "../services/stockApi";
 import { TechnicalAnalyzer } from "../utils/technicalAnalysis";
 
@@ -22,8 +21,7 @@ export function useStockDataUpdater(symbol: string, enabled: boolean = true) {
     store.setLoading(true);
 
     try {
-      // Alpha Vantage APIで株価履歴データを取得（レート制限が緩い）
-      const data = await fetchStockHistoryAlphaVantage(symbol, "3mo");
+      const data = await fetchStockHistory(symbol, "3mo");
 
       // テクニカル分析を実行
       const signals = TechnicalAnalyzer.analyzeStock(data);
@@ -31,7 +29,7 @@ export function useStockDataUpdater(symbol: string, enabled: boolean = true) {
       // ストアに保存
       store.setCurrentStock(symbol, data, signals);
 
-      console.log(`✅ Updated ${symbol} at ${new Date().toLocaleTimeString()}`);
+      console.log(`Updated ${symbol} at ${new Date().toLocaleTimeString()}`);
     } catch (error) {
       console.error("Failed to fetch stock data:", error);
       store.setError(error instanceof Error ? error.message : "不明なエラー");
@@ -47,9 +45,8 @@ export function useStockDataUpdater(symbol: string, enabled: boolean = true) {
     // 初回データ取得（2秒遅延 - 市場データの後に取得）
     const initialTimeout = setTimeout(fetchData, 2000);
 
-    // 定期更新の設定
-    const interval = getRecommendedUpdateInterval();
-    intervalRef.current = window.setInterval(fetchData, interval);
+    // 定期更新の設定（2分ごと）
+    intervalRef.current = window.setInterval(fetchData, 120000);
 
     return () => {
       clearTimeout(initialTimeout);
@@ -65,7 +62,7 @@ export function useStockDataUpdater(symbol: string, enabled: boolean = true) {
 }
 
 /**
- * 市場データ（指数）の自動更新フック
+ * 市場データ（日経指数）の自動更新フック
  */
 export function useMarketDataUpdater(enabled: boolean = true) {
   const store = useStockStore();
@@ -78,38 +75,21 @@ export function useMarketDataUpdater(enabled: boolean = true) {
     isLoadingRef.current = true;
 
     try {
-      const marketData = await fetchMarketData();
+      const nikkeiQuote = await fetchStockQuote("^N225");
 
-      // ストアに保存
       store.setMarketData({
         nikkei: {
           symbol: "N225",
-          value: Math.round(marketData.nikkei.price),
+          value: Math.round(nikkeiQuote.price),
           change: `${
-            marketData.nikkei.change_percent >= 0 ? "+" : ""
-          }${marketData.nikkei.change_percent.toFixed(1)}%`,
-          trend: marketData.nikkei.change_percent >= 0 ? "up" : "down",
-        },
-        sp500: {
-          symbol: "SPX",
-          value: Math.round(marketData.sp500.price),
-          change: `${
-            marketData.sp500.change_percent >= 0 ? "+" : ""
-          }${marketData.sp500.change_percent.toFixed(1)}%`,
-          trend: marketData.sp500.change_percent >= 0 ? "up" : "down",
-        },
-        nasdaq: {
-          symbol: "IXIC",
-          value: Math.round(marketData.nasdaq.price),
-          change: `${
-            marketData.nasdaq.change_percent >= 0 ? "+" : ""
-          }${marketData.nasdaq.change_percent.toFixed(1)}%`,
-          trend: marketData.nasdaq.change_percent >= 0 ? "up" : "down",
+            nikkeiQuote.change_percent >= 0 ? "+" : ""
+          }${nikkeiQuote.change_percent.toFixed(1)}%`,
+          trend: nikkeiQuote.change_percent >= 0 ? "up" : "down",
         },
       });
 
       console.log(
-        `✅ Updated market data at ${new Date().toLocaleTimeString()}`
+        `Updated market data at ${new Date().toLocaleTimeString()}`
       );
     } catch (error) {
       console.error("Failed to fetch market data:", error);
@@ -137,5 +117,6 @@ export function useMarketDataUpdater(enabled: boolean = true) {
 
   return {
     refetch: fetchData,
+    isLoading: isLoadingRef.current,
   };
 }

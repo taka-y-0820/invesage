@@ -1,29 +1,36 @@
 import "./App.css";
+import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { Layout } from "./components/Layout";
 import { TabNavigation, TabId } from "./components/TabNavigation";
-import ChartView from "./components/ChartView";
 import { CompanyInfo } from "./components/CompanyInfo";
-import { StockAnalysis } from "./components/StockAnalysis/StockAnalysis";
-import { SurgeStockList } from "./components/SurgeStockList";
-import { SurgeAlertPanel } from "./components/SurgeAlertPanel";
 import { StockDetailPanel } from "./components/StockDetailPanel";
 import { Dashboard } from "./components/Dashboard";
 import { Watchlist } from "./components/Watchlist";
 import { IRPanel } from "./components/IRPanel";
+import { SectorHeatmap } from "./components/SectorHeatmap";
+import { PortfolioPanel } from "./components/PortfolioPanel";
+import { EarningsCalendar } from "./components/EarningsCalendar";
+import { MarketIntelligence } from "./components/MarketIntelligence";
+import { ApiKeySetup } from "./components/ApiKeySetup";
 import { useJapanSurgeMonitor } from "./hooks/useJapanSurgeMonitor";
 import { useStockStore } from "./store/useStockStore";
+import { useApiKeyStore } from "./store/useApiKeyStore";
 
 function App() {
-  const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || "";
   const activeTab = useStockStore((state) => state.activeTab);
   const setActiveTab = useStockStore((state) => state.setActiveTab);
-  const watchlist = useStockStore((state) => state.watchlist);
   const openDetailPanel = useStockStore((state) => state.openDetailPanel);
+  const { finnhubApiKey, isConfigured, checkConfiguration } = useApiKeyStore();
+  const [showApiKeySetup, setShowApiKeySetup] = useState(!isConfigured);
 
-  const { surgeStocks, isMonitoring, error } = useJapanSurgeMonitor(apiKey, {
-    enabled: !!apiKey,
+  useEffect(() => {
+    checkConfiguration();
+  }, [checkConfiguration]);
+
+  const { surgeStocks, isMonitoring, error } = useJapanSurgeMonitor(finnhubApiKey, {
+    enabled: isConfigured,
     interval: 60000,
     threshold: 3,
   });
@@ -52,27 +59,18 @@ function App() {
           />
         );
 
-      case "screener":
-        return (
-          <section className="card">
-            <ChartView symbol="NVDA" />
-          </section>
-        );
+      case "sector":
+        return <SectorHeatmap onSelectStock={handleStockSelect} />;
 
       case "analysis":
         return (
-          <>
-            <section
-              className="card"
-              style={{ marginBottom: "var(--space-6)" }}
-            >
-              <StockAnalysis />
-            </section>
-            <section className="card">
-              <CompanyInfo />
-            </section>
-          </>
+          <section className="card">
+            <CompanyInfo />
+          </section>
         );
+
+      case "intelligence":
+        return <MarketIntelligence onSelectStock={handleStockSelect} />;
 
       case "ir":
         return (
@@ -81,15 +79,15 @@ function App() {
           </section>
         );
 
-      case "alerts":
+      case "earnings":
         return (
-          <section>
-            <SurgeAlertPanel
-              watchlistSymbols={watchlist}
-              enableAI={true}
-            />
+          <section className="card">
+            <EarningsCalendar />
           </section>
         );
+
+      case "portfolio":
+        return <PortfolioPanel />;
 
       case "watchlist":
         return <Watchlist onSelectStock={handleStockSelect} />;
@@ -99,8 +97,21 @@ function App() {
     }
   };
 
-  // Full-bleed tabs render without Layout wrapper
-  const isFullBleed = activeTab === "dashboard" || activeTab === "watchlist";
+  // Full-bleed tabs render without Layout wrapper (no sidebar needed)
+  const isFullBleed = activeTab === "dashboard" || activeTab === "sector" || activeTab === "watchlist" || activeTab === "portfolio" || activeTab === "intelligence";
+
+  // APIキー設定画面を表示
+  if (showApiKeySetup) {
+    return (
+      <ApiKeySetup
+        onComplete={() => {
+          checkConfiguration();
+          setShowApiKeySetup(false);
+        }}
+        isModal={false}
+      />
+    );
+  }
 
   return (
     <div
@@ -108,24 +119,25 @@ function App() {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: isFullBleed ? "#0a0f14" : "var(--color-cream)",
+        backgroundColor: "var(--color-cream)",
       }}
     >
-      <Header alertCount={surgeStocks.length} />
+      <Header
+        alertCount={surgeStocks.length}
+        onApiKeyClick={() => setShowApiKeySetup(true)}
+      />
 
       <TabNavigation
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        alertCount={surgeStocks.length}
       />
 
       {isFullBleed ? (
-        <div className="tab-content-enter" key={activeTab} style={{ flex: 1 }}>
+        <div className="tab-content-enter" key={activeTab} style={{ flex: 1, padding: "var(--space-6)" }}>
           {renderTabContent()}
         </div>
       ) : (
         <Layout
-          showSidebar={activeTab !== "alerts"}
           isMonitoring={isMonitoring}
           error={error}
           apiKey={apiKey}

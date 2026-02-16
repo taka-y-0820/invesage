@@ -1,43 +1,19 @@
 /* =============================================================================
-   Dashboard - Premium Financial Terminal Aesthetic
-   Inspired by Bloomberg Terminal meets Editorial Finance (FT/Economist)
+   Dashboard - マーケット概況ダッシュボード
+   IR Panel / Earnings Calendar デザインに統一
    ============================================================================= */
 
-/* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
-
 .dashboard {
-  --terminal-bg: #0a0f14;
-  --terminal-surface: #111921;
-  --terminal-surface-elevated: #1a242e;
-  --terminal-border: rgba(255, 255, 255, 0.06);
-  --terminal-border-accent: rgba(45, 212, 191, 0.2);
-  --terminal-text: #e2e8f0;
-  --terminal-text-muted: #64748b;
-  --terminal-text-dim: #475569;
-  --accent-teal: #2dd4bf;
-  --accent-teal-glow: rgba(45, 212, 191, 0.15);
-  --accent-gold: #fbbf24;
-  --accent-gold-glow: rgba(251, 191, 36, 0.15);
-  --bullish: #10b981;
-  --bullish-glow: rgba(16, 185, 129, 0.2);
-  --bearish: #ef4444;
-  --bearish-glow: rgba(239, 68, 68, 0.2);
-
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--terminal-bg);
-  min-height: 100vh;
-  color: var(--terminal-text);
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
 
 /* Grid Layout */
 .grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 20px;
-  max-width: 1600px;
-  margin: 0 auto;
+  gap: var(--space-5);
 }
 
 .gridFull { grid-column: span 12; }
@@ -60,42 +36,40 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .sectionTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.75rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: var(--terminal-text);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
   margin: 0;
 }
 
 .sectionSubtitle {
-  font-size: 0.8125rem;
-  color: var(--terminal-text-muted);
-  margin-top: 4px;
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--space-1);
 }
 
 .liveIndicator {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent-teal);
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-teal-700);
 }
 
 .liveDot {
   width: 8px;
   height: 8px;
-  background: var(--accent-teal);
-  border-radius: 50%;
+  background: var(--color-teal-600);
+  border-radius: var(--radius-full);
   animation: pulse 2s ease-in-out infinite;
-  box-shadow: 0 0 12px var(--accent-teal);
 }
 
 @keyframes pulse {
@@ -104,60 +78,58 @@
 }
 
 /* =============================================================================
-   Market Pulse - Horizontal Ticker Bar
+   Market Pulse
    ============================================================================= */
 
 .marketPulse {
-  background: var(--terminal-surface);
-  border: 1px solid var(--terminal-border);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .marketPulseHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--terminal-border);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
 }
 
 .marketPulseTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
+  margin: 0;
 }
 
 .marketPulseIcon {
   width: 20px;
   height: 20px;
-  color: var(--accent-teal);
+  color: var(--color-teal-600);
 }
 
 .marketIndices {
   display: flex;
-  gap: 12px;
+  gap: var(--space-4);
+  padding: var(--space-5);
   overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--terminal-border) transparent;
 }
 
 .indexCard {
   flex: 0 0 auto;
   min-width: 200px;
-  background: var(--terminal-surface-elevated);
-  border: 1px solid var(--terminal-border);
-  border-radius: 10px;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-cream);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
   position: relative;
   overflow: hidden;
 }
@@ -168,52 +140,47 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--terminal-border);
-  transition: background 0.2s ease;
+  height: 3px;
+  background: var(--color-divider);
+  transition: background var(--transition-fast);
 }
 
 .indexCard:hover {
-  border-color: var(--terminal-border-accent);
-  transform: translateY(-2px);
+  border-color: var(--color-teal-300);
+  box-shadow: var(--shadow-sm);
 }
 
-.indexCard:hover::before {
-  background: var(--accent-teal);
-}
-
-.indexCardBullish::before { background: var(--bullish); }
-.indexCardBearish::before { background: var(--bearish); }
+.indexCardBullish::before { background: var(--color-bullish); }
+.indexCardBearish::before { background: var(--color-bearish); }
 
 .indexName {
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--terminal-text-muted);
-  margin-bottom: 8px;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-gray-500);
+  margin-bottom: var(--space-2);
 }
 
 .indexValue {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--terminal-text);
-  margin-bottom: 6px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-1);
 }
 
 .indexChange {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.875rem;
-  font-weight: 500;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
 }
 
-.indexChangeBullish { color: var(--bullish); }
-.indexChangeBearish { color: var(--bearish); }
+.indexChangeBullish { color: var(--color-bullish); }
+.indexChangeBearish { color: var(--color-bearish); }
 
 .changeArrow {
   width: 14px;
@@ -221,14 +188,13 @@
 }
 
 /* =============================================================================
-   Metric Cards - Key Statistics
+   Metric Cards
    ============================================================================= */
 
 .metricsRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-4);
 }
 
 @media (max-width: 1200px) {
@@ -240,164 +206,161 @@
 }
 
 .metricCard {
-  background: var(--terminal-surface);
-  border: 1px solid var(--terminal-border);
-  border-radius: 12px;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s ease;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: all var(--transition-fast);
+}
+
+.metricCard:hover {
+  border-color: var(--color-teal-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.metricCardTeal,
+.metricCardGold,
+.metricCardBullish,
+.metricCardBearish {
+  /* No glow effects in light theme */
 }
 
 .metricCard::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.metricCardTeal::after { background: var(--accent-teal); }
-.metricCardGold::after { background: var(--accent-gold); }
-.metricCardBullish::after { background: var(--bullish); }
-.metricCardBearish::after { background: var(--bearish); }
-
-.metricCard:hover {
-  border-color: var(--terminal-border-accent);
-  transform: translateY(-2px);
+  display: none;
 }
 
 .metricHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .metricIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-teal-glow);
-  color: var(--accent-teal);
+  background: linear-gradient(135deg, var(--color-teal-700), var(--color-teal-900));
+  color: var(--color-white);
+}
+
+.metricIcon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .metricIconGold {
-  background: var(--accent-gold-glow);
-  color: var(--accent-gold);
+  background: linear-gradient(135deg, var(--color-caution), var(--color-caution-dark));
 }
 
 .metricIconBullish {
-  background: var(--bullish-glow);
-  color: var(--bullish);
+  background: linear-gradient(135deg, var(--color-bullish), var(--color-bullish-dark));
 }
 
 .metricBadge {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--bullish-glow);
-  color: var(--bullish);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bullish-light);
+  color: var(--color-bullish-dark);
 }
 
 .metricBadgeBearish {
-  background: var(--bearish-glow);
-  color: var(--bearish);
+  background: var(--color-bearish-light);
+  color: var(--color-bearish-dark);
 }
 
 .metricLabel {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--terminal-text-muted);
-  margin-bottom: 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-gray-500);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wider);
+  margin-bottom: var(--space-1);
 }
 
 .metricValue {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--terminal-text);
-  letter-spacing: -0.02em;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
   line-height: 1.2;
 }
 
 .metricValueSmall {
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
 }
 
 .metricSubtext {
-  font-size: 0.75rem;
-  color: var(--terminal-text-dim);
-  margin-top: 6px;
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
+  margin-top: var(--space-1);
 }
 
 /* =============================================================================
-   Surge Stocks - Premium Cards
+   Surge Stocks
    ============================================================================= */
 
 .surgeSection {
-  background: var(--terminal-surface);
-  border: 1px solid var(--terminal-border);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .surgeHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
 }
 
 .surgeTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-2);
+  margin: 0;
 }
 
 .surgeTitleIcon {
-  font-size: 1.5rem;
+  width: 20px;
+  height: 20px;
+  color: var(--color-teal-600);
 }
 
 .surgeCount {
-  background: var(--accent-teal-glow);
-  color: var(--accent-teal);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-teal-50);
+  color: var(--color-teal-700);
 }
 
 .surgeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5);
 }
 
 .surgeCard {
-  background: var(--terminal-surface-elevated);
-  border: 1px solid var(--terminal-border);
-  border-radius: 10px;
-  padding: 18px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all var(--transition-fast);
   position: relative;
 }
 
@@ -408,32 +371,29 @@
   left: 0;
   width: 4px;
   height: 100%;
-  border-radius: 10px 0 0 10px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
-.surgeCardBullish::before { background: var(--bullish); }
-.surgeCardBearish::before { background: var(--bearish); }
+.surgeCardBullish::before { background: var(--color-bullish); }
+.surgeCardBearish::before { background: var(--color-bearish); }
 
 .surgeCard:hover {
-  border-color: var(--terminal-border-accent);
-  transform: translateX(4px);
-  box-shadow: -4px 0 20px rgba(45, 212, 191, 0.1);
+  border-color: var(--color-teal-300);
+  box-shadow: var(--shadow-sm);
 }
 
 .surgeCardHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-2);
 }
 
 .surgeSymbol {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--terminal-text);
-  letter-spacing: 0.02em;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
 }
 
 .surgeChangeWrapper {
@@ -441,26 +401,26 @@
 }
 
 .surgeChange {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
   line-height: 1.2;
 }
 
-.surgeChangeBullish { color: var(--bullish); }
-.surgeChangeBearish { color: var(--bearish); }
+.surgeChangeBullish { color: var(--color-bullish); }
+.surgeChangeBearish { color: var(--color-bearish); }
 
 .surgeChangeLabel {
-  font-size: 0.6875rem;
-  color: var(--terminal-text-dim);
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-wider);
 }
 
 .surgeName {
-  font-size: 0.875rem;
-  color: var(--terminal-text-muted);
-  margin-bottom: 16px;
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin-bottom: var(--space-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -470,28 +430,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid var(--terminal-border);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
 }
 
 .surgePrice {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
 }
 
 .surgePrevPrice {
-  font-size: 0.75rem;
-  color: var(--terminal-text-dim);
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
 }
 
 .surgeVolume {
-  font-size: 0.75rem;
-  color: var(--terminal-text-muted);
+  font-size: var(--text-xs);
+  color: var(--color-gray-500);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .surgeVolumeIcon {
@@ -501,43 +461,46 @@
 }
 
 /* =============================================================================
-   Watchlist Quick View
+   Watchlist Quick View (Dashboard内)
    ============================================================================= */
 
 .watchlistSection {
-  background: var(--terminal-surface);
-  border: 1px solid var(--terminal-border);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .watchlistHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
 }
 
 .watchlistTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
 }
 
 .watchlistViewAll {
-  font-size: 0.8125rem;
-  color: var(--accent-teal);
+  font-size: var(--text-xs);
+  color: var(--color-teal-700);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
 }
 
 .watchlistViewAll:hover {
-  background: var(--accent-teal-glow);
+  background: var(--color-teal-50);
 }
 
 .watchlistTable {
@@ -547,12 +510,12 @@
 .watchlistRow {
   display: grid;
   grid-template-columns: 100px 1fr 100px 100px 60px;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--terminal-border);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-divider-light);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .watchlistRow:last-child {
@@ -560,41 +523,41 @@
 }
 
 .watchlistRow:hover {
-  background: var(--terminal-surface-elevated);
-  margin: 0 -24px;
-  padding: 14px 24px;
+  background: var(--color-gray-50);
 }
 
 .watchlistSymbol {
-  font-family: 'IBM Plex Mono', monospace;
-  font-weight: 600;
-  color: var(--terminal-text);
+  font-family: var(--font-mono);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  font-size: var(--text-sm);
 }
 
 .watchlistName {
-  font-size: 0.875rem;
-  color: var(--terminal-text-muted);
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .watchlistPrice {
-  font-family: 'IBM Plex Mono', monospace;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-mono);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
   text-align: right;
+  font-size: var(--text-sm);
 }
 
 .watchlistChange {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   text-align: right;
 }
 
-.watchlistChangeBullish { color: var(--bullish); }
-.watchlistChangeBearish { color: var(--bearish); }
+.watchlistChangeBullish { color: var(--color-bullish); }
+.watchlistChangeBearish { color: var(--color-bearish); }
 
 .watchlistSparkline {
   height: 24px;
@@ -606,61 +569,63 @@
    ============================================================================= */
 
 .chartSection {
-  background: var(--terminal-surface);
-  border: 1px solid var(--terminal-border);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .chartHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
 }
 
 .chartTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--terminal-text);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
 }
 
 .chartControls {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .chartTimeBtn {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--terminal-border);
-  background: transparent;
-  color: var(--terminal-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-divider);
+  background: var(--color-white);
+  color: var(--color-gray-600);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
 .chartTimeBtn:hover {
-  border-color: var(--terminal-border-accent);
-  color: var(--terminal-text);
+  border-color: var(--color-teal-500);
+  color: var(--color-teal-700);
 }
 
 .chartTimeBtnActive {
-  background: var(--accent-teal-glow);
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
+  background: var(--color-teal-700);
+  border-color: var(--color-teal-700);
+  color: var(--color-white);
 }
 
 .chartContainer {
   height: 350px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--terminal-bg);
+  padding: var(--space-4);
+  background: var(--color-dark-panel);
+  border-radius: 0;
 }
 
 /* =============================================================================
@@ -668,32 +633,35 @@
    ============================================================================= */
 
 .emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
   text-align: center;
+  padding: var(--space-8);
+  color: var(--color-gray-400);
 }
 
 .emptyIcon {
-  width: 64px;
-  height: 64px;
-  color: var(--terminal-text-dim);
-  margin-bottom: 16px;
-  opacity: 0.5;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-3);
+  color: var(--color-gray-300);
+}
+
+.emptyIcon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .emptyTitle {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.25rem;
-  color: var(--terminal-text-muted);
-  margin-bottom: 8px;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-500);
+  margin: 0 0 var(--space-2) 0;
 }
 
 .emptySubtitle {
-  font-size: 0.875rem;
-  color: var(--terminal-text-dim);
+  font-size: var(--text-sm);
+  color: var(--color-gray-400);
+  margin: 0;
 }
 
 /* =============================================================================
@@ -735,25 +703,3 @@
 .animateDelay3 { animation-delay: 0.15s; }
 .animateDelay4 { animation-delay: 0.2s; }
 .animateDelay5 { animation-delay: 0.25s; }
-
-/* =============================================================================
-   Scrollbar Styling
-   ============================================================================= */
-
-.dashboard ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.dashboard ::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dashboard ::-webkit-scrollbar-thumb {
-  background: var(--terminal-border);
-  border-radius: 3px;
-}
-
-.dashboard ::-webkit-scrollbar-thumb:hover {
-  background: var(--terminal-text-dim);
-}

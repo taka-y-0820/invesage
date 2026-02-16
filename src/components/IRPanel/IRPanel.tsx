@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   CompanyIRInfo,
   IRRelease,
@@ -16,9 +17,9 @@ const QUICK_SYMBOLS = [
   { symbol: "7203.T", label: "トヨタ" },
   { symbol: "9984.T", label: "SBG" },
   { symbol: "6758.T", label: "ソニー" },
-  { symbol: "AAPL", label: "Apple" },
-  { symbol: "MSFT", label: "Microsoft" },
-  { symbol: "NVDA", label: "NVIDIA" },
+  { symbol: "8035.T", label: "東エレク" },
+  { symbol: "6501.T", label: "日立" },
+  { symbol: "9432.T", label: "NTT" },
 ];
 
 const ALL_CATEGORIES: IRCategory[] = [
@@ -40,6 +41,8 @@ export const IRPanel: React.FC = () => {
   const [selectedCategories, setSelectedCategories] = useState<Set<IRCategory>>(
     new Set()
   );
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState("");
 
   const handleFetch = useCallback(
     async (targetSymbol?: string) => {
@@ -49,9 +52,20 @@ export const IRPanel: React.FC = () => {
       setLoading(true);
       setError(null);
       setSelectedCategories(new Set());
+      setLoadingProgress("TDnet / Finnhub APIに接続中...");
 
       try {
+        const progressTimer = setInterval(() => {
+          setLoadingProgress((prev) => {
+            if (prev.includes("接続中")) return "IR開示情報を取得中...";
+            if (prev.includes("IR開示情報")) return "決算・配当データを解析中...";
+            if (prev.includes("解析中")) return "データを整理中...";
+            return prev;
+          });
+        }, 2000);
+
         const data = await fetchCompanyIRInfo(sym);
+        clearInterval(progressTimer);
         setIrInfo(data);
         if (!targetSymbol) setSymbol(sym);
       } catch (err) {
@@ -63,10 +77,19 @@ export const IRPanel: React.FC = () => {
         setIrInfo(null);
       } finally {
         setLoading(false);
+        setLoadingProgress("");
       }
     },
     [symbol]
   );
+
+  const handleOpenPdf = useCallback((url: string) => {
+    setPdfUrl(url);
+  }, []);
+
+  const handleClosePdf = useCallback(() => {
+    setPdfUrl(null);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleFetch();
@@ -164,7 +187,7 @@ export const IRPanel: React.FC = () => {
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="銘柄コードを入力 (例: 7203.T, AAPL)"
+          placeholder="銘柄コードを入力 (例: 7203.T)"
         />
         <button
           className={styles.searchButton}
@@ -193,9 +216,43 @@ export const IRPanel: React.FC = () => {
 
       {/* Loading */}
       {loading && (
-        <div className={styles.loading}>
-          <div className={styles.loadingSpinner} />
-          <span className={styles.loadingText}>IR情報を取得中...</span>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loading}>
+            <div className={styles.loadingSpinner} />
+            <span className={styles.loadingText}>{loadingProgress || "IR情報を取得中..."}</span>
+          </div>
+          {/* Skeleton UI */}
+          <div className={styles.skeleton}>
+            <div className={styles.skeletonBanner}>
+              <div className={styles.skeletonPulse} style={{ width: "120px", height: "16px" }} />
+              <div className={styles.skeletonPulse} style={{ width: "180px", height: "24px", marginTop: "8px" }} />
+            </div>
+            <div className={styles.skeletonSection}>
+              <div className={styles.skeletonPulse} style={{ width: "100px", height: "18px", marginBottom: "12px" }} />
+              <div className={styles.skeletonTable}>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className={styles.skeletonRow}>
+                    <div className={styles.skeletonPulse} style={{ width: "80px", height: "14px" }} />
+                    <div className={styles.skeletonPulse} style={{ width: "60px", height: "14px" }} />
+                    <div className={styles.skeletonPulse} style={{ width: "60px", height: "14px" }} />
+                    <div className={styles.skeletonPulse} style={{ width: "60px", height: "14px" }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className={styles.skeletonSection}>
+              <div className={styles.skeletonPulse} style={{ width: "120px", height: "18px", marginBottom: "12px" }} />
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className={styles.skeletonItem}>
+                  <div className={styles.skeletonPulse} style={{ width: "60px", height: "22px", borderRadius: "4px" }} />
+                  <div style={{ flex: 1 }}>
+                    <div className={styles.skeletonPulse} style={{ width: "90%", height: "14px" }} />
+                    <div className={styles.skeletonPulse} style={{ width: "40%", height: "12px", marginTop: "6px" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -378,6 +435,7 @@ export const IRPanel: React.FC = () => {
                       key={release.id}
                       release={release}
                       formatDate={formatDate}
+                      onOpenPdf={handleOpenPdf}
                     />
                   ))}
                 </div>
@@ -455,6 +513,11 @@ export const IRPanel: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* PDF Viewer Modal */}
+      {pdfUrl && (
+        <PdfViewer url={pdfUrl} onClose={handleClosePdf} />
+      )}
     </div>
   );
 };
@@ -519,11 +582,19 @@ const EarningsTable: React.FC<{
   );
 };
 
+/** URLがPDFかどうかを判定 */
+function isPdfUrl(url: string): boolean {
+  return /\.pdf(\?|$|#)/i.test(url);
+}
+
 /** IR開示項目コンポーネント */
 const IRReleaseItem: React.FC<{
   release: IRRelease;
   formatDate: (dateStr: string) => string;
-}> = ({ release, formatDate }) => {
+  onOpenPdf: (url: string) => void;
+}> = ({ release, formatDate, onOpenPdf }) => {
+  const hasPdf = release.url ? isPdfUrl(release.url) : false;
+
   return (
     <div className={styles.releaseItem}>
       <span
@@ -546,10 +617,218 @@ const IRReleaseItem: React.FC<{
           <span>{formatDate(release.publishedAt)}</span>
           <span>|</span>
           <span>{release.source}</span>
+          {hasPdf && (
+            <>
+              <span>|</span>
+              <button
+                className={styles.pdfButton}
+                onClick={() => onOpenPdf(release.url!)}
+                title="PDFをアプリ内で表示"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                PDF表示
+              </button>
+            </>
+          )}
         </div>
         {release.summary && (
           <p className={styles.releaseSummary}>{release.summary}</p>
         )}
+      </div>
+    </div>
+  );
+};
+
+/** PDFビューアーコンポーネント（Tauriプロキシ経由でPDFを取得 - リトライ付き） */
+const PdfViewer: React.FC<{
+  url: string;
+  onClose: () => void;
+}> = ({ url, onClose }) => {
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  // Tauriプロキシ経由でPDFを取得（retryCountが変化すると再取得）
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchPdf = async () => {
+      setPdfLoading(true);
+      setPdfError(null);
+      setBlobUrl(null);
+
+      try {
+        const base64Data = await invoke<string>("proxy_fetch_pdf", { url });
+
+        if (cancelled) return;
+
+        // Base64をバイナリに変換してBlob URLを生成
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+        setPdfLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("PDF proxy fetch failed:", err);
+        setPdfError(
+          err instanceof Error ? err.message : "PDFの取得に失敗しました"
+        );
+        setPdfLoading(false);
+      }
+    };
+
+    fetchPdf();
+
+    return () => {
+      cancelled = true;
+      // Blob URLをクリーンアップ
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [url, retryCount]);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  return (
+    <div
+      className={styles.pdfOverlay}
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+    >
+      <div className={styles.pdfModal}>
+        <div className={styles.pdfHeader}>
+          <div className={styles.pdfHeaderLeft}>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span className={styles.pdfHeaderTitle}>PDF表示</span>
+          </div>
+          <div className={styles.pdfHeaderActions}>
+            <a
+              className={styles.pdfExternalLink}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="外部ブラウザで開く"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+            <button
+              className={styles.pdfCloseButton}
+              onClick={onClose}
+              title="閉じる (Esc)"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className={styles.pdfBody}>
+          {pdfLoading && (
+            <div className={styles.pdfLoading}>
+              <div className={styles.loadingSpinner} />
+              <span className={styles.loadingText}>PDFをダウンロード中...</span>
+            </div>
+          )}
+          {pdfError ? (
+            <div className={styles.pdfErrorState}>
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+              <p>PDFの読み込みに失敗しました</p>
+              <p className={styles.pdfErrorDetail}>{pdfError}</p>
+              <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                <button
+                  className={styles.pdfFallbackLink}
+                  onClick={() => setRetryCount((c) => c + 1)}
+                  style={{ cursor: "pointer", border: "1px solid currentColor", borderRadius: "6px", padding: "6px 16px", background: "transparent" }}
+                >
+                  再試行する
+                </button>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.pdfFallbackLink}
+                >
+                  外部ブラウザで開く
+                </a>
+              </div>
+            </div>
+          ) : blobUrl ? (
+            <iframe
+              className={styles.pdfFrame}
+              src={blobUrl}
+              title="PDF Viewer"
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

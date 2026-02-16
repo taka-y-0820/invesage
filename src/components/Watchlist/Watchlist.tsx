@@ -60,24 +60,24 @@ interface WatchlistProps {
   onSelectStock: (stock: { symbol: string; name: string; currentPrice?: number; changePercent?: number }) => void;
 }
 
-// Sample stock data (in real app, fetch from API)
+// サンプル株価データ（実際にはAPIから取得）
 const STOCK_DATA: Record<string, { name: string; price: number; change: number; sector: string }> = {
-  NVDA: { name: "NVIDIA Corporation", price: 142.58, change: 3.42, sector: "Technology" },
-  MSFT: { name: "Microsoft Corporation", price: 378.91, change: -0.87, sector: "Technology" },
-  GOOGL: { name: "Alphabet Inc.", price: 176.23, change: 1.56, sector: "Technology" },
-  AAPL: { name: "Apple Inc.", price: 189.45, change: -1.23, sector: "Technology" },
-  TSLA: { name: "Tesla, Inc.", price: 248.50, change: 4.21, sector: "Automotive" },
-  AMZN: { name: "Amazon.com, Inc.", price: 186.32, change: 2.15, sector: "Consumer" },
-  META: { name: "Meta Platforms, Inc.", price: 512.78, change: -0.45, sector: "Technology" },
-  AMD: { name: "Advanced Micro Devices", price: 164.25, change: 2.89, sector: "Technology" },
+  "7203.T": { name: "トヨタ自動車", price: 2850, change: 1.25, sector: "自動車" },
+  "9984.T": { name: "ソフトバンクグループ", price: 8950, change: -0.87, sector: "通信" },
+  "6758.T": { name: "ソニーグループ", price: 13200, change: 2.15, sector: "電気機器" },
+  "7974.T": { name: "任天堂", price: 7850, change: 0.95, sector: "その他製品" },
+  "8035.T": { name: "東京エレクトロン", price: 23500, change: -1.42, sector: "電気機器" },
+  "6501.T": { name: "日立製作所", price: 9800, change: 1.78, sector: "電気機器" },
+  "9432.T": { name: "日本電信電話", price: 170, change: 0.35, sector: "通信" },
+  "6861.T": { name: "キーエンス", price: 62000, change: -0.65, sector: "電気機器" },
 };
 
 export const Watchlist: React.FC<WatchlistProps> = ({ onSelectStock }) => {
   const watchlist = useStockStore((state) => state.watchlist);
   const removeFromWatchlist = useStockStore((state) => state.removeFromWatchlist);
 
-  const formatNumber = (num: number, decimals = 2) => {
-    return num.toLocaleString("en-US", {
+  const formatNumber = (num: number, decimals = 0) => {
+    return num.toLocaleString("ja-JP", {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
@@ -96,7 +96,6 @@ export const Watchlist: React.FC<WatchlistProps> = ({ onSelectStock }) => {
     sector: "Unknown",
   });
 
-  const totalValue = stocksData.reduce((acc, s) => acc + s.price, 0);
   const gainers = stocksData.filter((s) => s.change > 0).length;
   const losers = stocksData.filter((s) => s.change < 0).length;
   const avgChange = stocksData.length > 0
@@ -118,7 +117,7 @@ export const Watchlist: React.FC<WatchlistProps> = ({ onSelectStock }) => {
           </div>
           <div>
             <h1 className={styles.title}>Watchlist</h1>
-            <p className={styles.subtitle}>Track your favorite stocks</p>
+            <p className={styles.subtitle}>お気に入り銘柄の管理</p>
           </div>
         </div>
         <div className={styles.headerActions}>
@@ -227,13 +226,13 @@ export const Watchlist: React.FC<WatchlistProps> = ({ onSelectStock }) => {
 
                     {/* Price */}
                     <div className={styles.priceCell}>
-                      <div className={styles.price}>${formatNumber(stock.price)}</div>
+                      <div className={styles.price}>¥{formatNumber(stock.price)}</div>
                       <div
                         className={`${styles.priceChange} ${
                           isPositive ? styles.priceChangeBullish : styles.priceChangeBearish
                         }`}
                       >
-                        {isPositive ? "+" : ""}${Math.abs(stock.price * stock.change / 100).toFixed(2)}
+                        {isPositive ? "+" : ""}¥{formatNumber(Math.abs(stock.price * stock.change / 100))}
                       </div>
                     </div>
 

@@ -1,0 +1,1 @@
+export { MarketIntelligence } from './MarketIntelligence';

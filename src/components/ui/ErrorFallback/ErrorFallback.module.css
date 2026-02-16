@@ -1,0 +1,107 @@
+/* エラーフォールバック - フルサイズ */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  gap: 12px;
+}
+
+.iconWrapper {
+  color: var(--color-bearish, #ef4444);
+  opacity: 0.8;
+}
+
+.message {
+  font-family: var(--font-body, "DM Sans", sans-serif);
+  font-size: var(--text-sm, 14px);
+  color: var(--color-text-secondary, #64748b);
+  margin: 0;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.detail {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-tertiary, #94a3b8);
+  margin: 0;
+  max-width: 400px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 20px;
+  font-family: var(--font-body, "DM Sans", sans-serif);
+  font-size: var(--text-sm, 14px);
+  font-weight: 500;
+  color: var(--color-teal-600, #0d9488);
+  background: transparent;
+  border: 1px solid var(--color-teal-300, #5eead4);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retryButton:hover:not(:disabled) {
+  background: var(--color-teal-50, #f0fdfa);
+  border-color: var(--color-teal-400, #2dd4bf);
+}
+
+.retryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* エラーフォールバック - コンパクト */
+.compactContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 6px;
+}
+
+.compactIcon {
+  color: var(--color-bearish, #ef4444);
+  flex-shrink: 0;
+}
+
+.compactMessage {
+  font-family: var(--font-body, "DM Sans", sans-serif);
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-secondary, #64748b);
+  flex: 1;
+}
+
+.compactRetryButton {
+  font-family: var(--font-body, "DM Sans", sans-serif);
+  font-size: var(--text-xs, 12px);
+  font-weight: 500;
+  color: var(--color-teal-600, #0d9488);
+  background: transparent;
+  border: 1px solid var(--color-teal-300, #5eead4);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.compactRetryButton:hover:not(:disabled) {
+  background: var(--color-teal-50, #f0fdfa);
+}
+
+.compactRetryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

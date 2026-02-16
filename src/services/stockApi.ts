@@ -5,6 +5,21 @@ import {
   NewsSentiment,
   NewsArticle,
 } from "../types";
+import { withRetry, isRetryableError } from "../utils/retry";
+import {
+  cachedFetch,
+  stockQuoteCache,
+  stockHistoryCache,
+  companyProfileCache,
+  newsSentimentCache,
+  newsArticleCache,
+} from "../utils/cache";
+import {
+  yahooFinanceBreaker,
+  finnhubBreaker,
+  tdnetBreaker,
+} from "../utils/circuitBreaker";
+import { useApiKeyStore } from "../store/useApiKeyStore";
 
 export interface StockQuote {
   symbol: string;
@@ -24,251 +39,167 @@ export interface StockDataPoint {
   volume: number;
 }
 
-/**
- * Alpha Vantage APIでリアルタイム株価を取得（レート制限が緩い）
- * 日本株: 7203.TYO (トヨタ)、9984.TYO (ソフトバンク)
- * 米国株: AAPL、NVDA など
- */
-export async function fetchStockQuoteAlphaVantage(
-  symbol: string
-): Promise<StockQuote> {
-  try {
-    const quote = await invoke<StockQuote>("fetch_stock_quote_alpha_vantage", {
-      symbol,
-    });
-    return quote;
-  } catch (error) {
-    console.error(
-      `Failed to fetch quote from Alpha Vantage for ${symbol}:`,
-      error
+/** リトライ共通オプション */
+const retryOptions = {
+  maxRetries: 2,
+  baseDelay: 1500,
+  shouldRetry: isRetryableError,
+  onRetry: (error: unknown, attempt: number, delay: number) => {
+    console.warn(
+      `[stockApi] リトライ ${attempt}回目 (${delay}ms後): ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
-    throw new Error(`株価データの取得に失敗しました: ${symbol}`);
-  }
-}
+  },
+};
 
 /**
- * Alpha Vantage APIで株価履歴データを取得
- */
-export async function fetchStockHistoryAlphaVantage(
-  symbol: string,
-  period: string = "1mo"
-): Promise<StockData[]> {
-  try {
-    const history = await invoke<StockDataPoint[]>(
-      "fetch_stock_history_alpha_vantage",
-      {
-        symbol,
-        period,
-      }
-    );
-
-    return history.map((point) => ({
-      time: point.time,
-      open: point.open,
-      high: point.high,
-      low: point.low,
-      close: point.close,
-      volume: point.volume,
-    }));
-  } catch (error) {
-    console.error(
-      `Failed to fetch history from Alpha Vantage for ${symbol}:`,
-      error
-    );
-    throw new Error(`履歴データの取得に失敗しました: ${symbol}`);
-  }
-}
-
-/**
- * リアルタイム株価を取得
+ * リアルタイム株価を取得（Yahoo Finance経由）
+ * - キャッシュ: 1分 TTL
+ * - リトライ: 最大2回 + 指数バックオフ
+ * - サーキットブレーカー: 5回連続失敗で60秒停止
  */
 export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
-  try {
-    const quote = await invoke<StockQuote>("fetch_stock_quote", { symbol });
-    return quote;
-  } catch (error) {
+  return cachedFetch(stockQuoteCache, `quote:${symbol}`, () =>
+    yahooFinanceBreaker.execute(() =>
+      withRetry(
+        () => invoke<StockQuote>("fetch_stock_quote", { symbol }),
+        retryOptions
+      )
+    )
+  ).catch((error) => {
     console.error(`Failed to fetch quote for ${symbol}:`, error);
-    throw new Error(`株価データの取得に失敗しました: ${symbol}`);
-  }
+    throw new Error(
+      `株価データの取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
+  });
 }
 
 /**
  * 株価履歴データを取得
- * @param symbol 銘柄シンボル
- * @param period 期間 (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+ * - キャッシュ: 5分 TTL
+ * - リトライ: 最大2回
  */
 export async function fetchStockHistory(
   symbol: string,
   period: string = "1mo"
 ): Promise<StockData[]> {
-  try {
-    const history = await invoke<StockDataPoint[]>("fetch_stock_history", {
-      symbol,
-      period,
-    });
+  const cacheKey = `history:${symbol}:${period}`;
 
-    // StockDataPoint[] を StockData[] に変換
-    return history.map((point) => ({
-      time: point.time,
-      open: point.open,
-      high: point.high,
-      low: point.low,
-      close: point.close,
-      volume: point.volume,
-    }));
-  } catch (error) {
+  return cachedFetch(stockHistoryCache, cacheKey, () =>
+    yahooFinanceBreaker.execute(() =>
+      withRetry(
+        async () => {
+          const history = await invoke<StockDataPoint[]>(
+            "fetch_stock_history",
+            { symbol, period }
+          );
+          return history.map((point) => ({
+            time: point.time,
+            open: point.open,
+            high: point.high,
+            low: point.low,
+            close: point.close,
+            volume: point.volume,
+          }));
+        },
+        retryOptions
+      )
+    )
+  ).catch((error) => {
     console.error(`Failed to fetch history for ${symbol}:`, error);
-    throw new Error(`履歴データの取得に失敗しました: ${symbol}`);
-  }
+    throw new Error(
+      `履歴データの取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
+  });
 }
 
 /**
  * 複数銘柄の株価を一括取得
+ * - バックエンド側で2秒間隔のレート制限回避済み
+ * - リトライ: 一括取得全体をリトライ
  */
 export async function fetchMultipleQuotes(
   symbols: string[]
 ): Promise<StockQuote[]> {
   try {
-    const quotes = await invoke<StockQuote[]>("fetch_multiple_quotes", {
-      symbols,
-    });
-    return quotes;
+    return await yahooFinanceBreaker.execute(() =>
+      withRetry(
+        () => invoke<StockQuote[]>("fetch_multiple_quotes", { symbols }),
+        { ...retryOptions, maxRetries: 1 }
+      )
+    );
   } catch (error) {
     console.error("Failed to fetch multiple quotes:", error);
-    throw new Error("複数銘柄データの取得に失敗しました");
-  }
-}
-
-/**
- * 市場データを取得(日経、S&P500、NASDAQ)
- * エラーが発生した場合は個別にフォールバックデータを使用
- * レート制限回避のため順次取得
- */
-export async function fetchMarketData(): Promise<{
-  nikkei: StockQuote;
-  sp500: StockQuote;
-  nasdaq: StockQuote;
-}> {
-  const result = {
-    nikkei: createEmptyQuote("^N225"),
-    sp500: createEmptyQuote("^GSPC"),
-    nasdaq: createEmptyQuote("^IXIC"),
-  };
-
-  // レート制限を避けるため、複数銘柄一括取得を使用
-  try {
-    const quotes = await fetchMultipleQuotes(["^N225", "^GSPC", "^IXIC"]);
-
-    quotes.forEach((quote) => {
-      if (quote.symbol === "^N225") result.nikkei = quote;
-      else if (quote.symbol === "^GSPC") result.sp500 = quote;
-      else if (quote.symbol === "^IXIC") result.nasdaq = quote;
-    });
-  } catch (error) {
-    console.error("Failed to fetch market data:", error);
-    // エラーでも空データを返す（フォールバック）
-  }
-
-  return result;
-}
-
-/**
- * エラー時のフォールバック用空データ
- */
-function createEmptyQuote(symbol: string): StockQuote {
-  return {
-    symbol,
-    price: 0,
-    change: 0,
-    change_percent: 0,
-    volume: 0,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-/**
- * 市場が開いているかチェック（簡易版）
- */
-export function isMarketOpen(): boolean {
-  const now = new Date();
-  const day = now.getDay();
-  const hours = now.getHours();
-
-  // 土日は休場
-  if (day === 0 || day === 6) {
-    return false;
-  }
-
-  // 平日の9:30-16:00を開場時間とする（米国市場の例）
-  // 実際はタイムゾーンや祝日を考慮する必要がある
-  return hours >= 9 && hours < 16;
-}
-
-/**
- * 次の更新までの推奨待機時間（ミリ秒）
- */
-export function getRecommendedUpdateInterval(): number {
-  return isMarketOpen() ? 30000 : 300000; // 開場中30秒、閉場中5分
-}
-
-/**
- * Finnhub APIから企業プロフィールを取得（セクター・業種情報含む）
- */
-export async function fetchCompanyProfile(
-  symbol: string
-): Promise<CompanyProfile> {
-  try {
-    const profile = await invoke<CompanyProfile>(
-      "fetch_company_profile_finnhub",
-      { symbol }
+    throw new Error(
+      `複数銘柄データの取得に失敗しました - ${extractErrorMessage(error)}`
     );
-    return profile;
-  } catch (error) {
-    console.error(`Failed to fetch company profile for ${symbol}:`, error);
-    throw new Error(`企業情報の取得に失敗しました: ${symbol}`);
   }
 }
 
 /**
- * Finnhub APIからニュースセンチメントを取得（注目度・期待度の指標）
+ * セクターヒートマップ用：複数銘柄の株価をバッチ取得
  */
-export async function fetchNewsSentiment(
-  symbol: string
-): Promise<NewsSentiment> {
+export async function fetchSectorQuotes(
+  symbols: string[]
+): Promise<StockQuote[]> {
   try {
-    const sentiment = await invoke<NewsSentiment>(
-      "fetch_news_sentiment_finnhub",
-      { symbol }
+    return await yahooFinanceBreaker.execute(() =>
+      withRetry(
+        () => invoke<StockQuote[]>("fetch_sector_quotes", { symbols }),
+        { ...retryOptions, maxRetries: 1 }
+      )
     );
-    return sentiment;
   } catch (error) {
-    console.error(`Failed to fetch news sentiment for ${symbol}:`, error);
-    throw new Error(`センチメント情報の取得に失敗しました: ${symbol}`);
+    console.error("Failed to fetch sector quotes:", error);
+    throw new Error(
+      `セクター銘柄データの取得に失敗しました - ${extractErrorMessage(error)}`
+    );
   }
 }
 
 /**
  * Finnhub APIから企業ニュースを取得
- * @param symbol 銘柄シンボル
- * @param from 開始日 (YYYY-MM-DD)
- * @param to 終了日 (YYYY-MM-DD)
+ * - キャッシュ: 5分 TTL
+ * - リトライ: 最大2回
  */
 export async function fetchCompanyNews(
   symbol: string,
   from: string,
   to: string
 ): Promise<NewsArticle[]> {
-  try {
-    const news = await invoke<NewsArticle[]>("fetch_company_news_finnhub", {
-      symbol,
-      from,
-      to,
-    });
-    return news;
-  } catch (error) {
+  const cacheKey = `news:${symbol}:${from}:${to}`;
+  const apiKey = useApiKeyStore.getState().finnhubApiKey;
+
+  return cachedFetch(newsArticleCache, cacheKey, () =>
+    finnhubBreaker.execute(() =>
+      withRetry(
+        () => {
+          // APIキーが設定されている場合は新しいコマンドを使用
+          if (apiKey && apiKey !== "demo") {
+            return invoke<NewsArticle[]>("fetch_company_news_finnhub_with_key", {
+              symbol,
+              from,
+              to,
+              apiKey,
+            });
+          }
+          // 互換性のため、APIキーがない場合は既存のコマンドを使用
+          return invoke<NewsArticle[]>("fetch_company_news_finnhub", {
+            symbol,
+            from,
+            to,
+          });
+        },
+        retryOptions
+      )
+    )
+  ).catch((error) => {
     console.error(`Failed to fetch company news for ${symbol}:`, error);
-    throw new Error(`ニュースの取得に失敗しました: ${symbol}`);
-  }
+    throw new Error(
+      `ニュースの取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
+  });
 }
 
 /**
@@ -283,113 +214,85 @@ export function calculateAttentionLevel(
 }
 
 /**
- * 日本株の企業プロフィールを取得（Pythonスクリプト経由）
- * yfinanceを使用するため無料で利用可能
- */
-export async function fetchJapaneseStockProfile(
-  symbol: string
-): Promise<CompanyProfile> {
-  try {
-    const profile = await invoke<CompanyProfile>(
-      "fetch_japanese_stock_profile",
-      { symbol }
-    );
-    return profile;
-  } catch (error) {
-    console.error(
-      `Failed to fetch Japanese stock profile for ${symbol}:`,
-      error
-    );
-    throw new Error(`日本株企業情報の取得に失敗しました: ${symbol}`);
-  }
-}
-
-/**
- * 日本株のニュースセンチメントを取得（Pythonスクリプト経由）
- */
-export async function fetchJapaneseStockSentiment(
-  symbol: string
-): Promise<NewsSentiment> {
-  try {
-    const sentiment = await invoke<NewsSentiment>(
-      "fetch_japanese_stock_sentiment",
-      { symbol }
-    );
-    return sentiment;
-  } catch (error) {
-    console.error(
-      `Failed to fetch Japanese stock sentiment for ${symbol}:`,
-      error
-    );
-    throw new Error(`日本株センチメント情報の取得に失敗しました: ${symbol}`);
-  }
-}
-
-/**
  * 日本株の企業プロフィールを複合手法（API + スクレイピング）で取得
- * より安定したデータ取得を実現
+ * - キャッシュ: 30分 TTL
+ * - リトライ: 最大2回
+ * - サーキットブレーカー: TDnet用（3回失敗で120秒停止）
  */
 export async function fetchJapaneseStockProfileHybrid(
   symbol: string
 ): Promise<CompanyProfile> {
-  try {
-    const profile = await invoke<CompanyProfile>(
-      "fetch_japanese_stock_profile_hybrid",
-      { symbol }
-    );
-    return profile;
-  } catch (error) {
+  return cachedFetch(companyProfileCache, `profile:${symbol}`, () =>
+    tdnetBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<CompanyProfile>("fetch_japanese_stock_profile_hybrid", {
+            symbol,
+          }),
+        { ...retryOptions, maxRetries: 1 }
+      )
+    )
+  ).catch((error) => {
     console.error(
       `Failed to fetch Japanese stock profile (hybrid) for ${symbol}:`,
       error
     );
     throw new Error(
-      `日本株企業情報の取得に失敗しました（複合手法）: ${symbol}`
+      `日本株企業情報の取得に失敗しました（複合手法）: ${symbol} - ${extractErrorMessage(error)}`
     );
-  }
+  });
 }
 
 /**
  * 日本株のセンチメントを複合手法（API + スクレイピング）で取得
+ * - キャッシュ: 10分 TTL
  */
 export async function fetchJapaneseStockSentimentHybrid(
   symbol: string
 ): Promise<NewsSentiment> {
-  try {
-    const sentiment = await invoke<NewsSentiment>(
-      "fetch_japanese_stock_sentiment_hybrid",
-      { symbol }
-    );
-    return sentiment;
-  } catch (error) {
+  return cachedFetch(newsSentimentCache, `sentiment:${symbol}`, () =>
+    tdnetBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<NewsSentiment>("fetch_japanese_stock_sentiment_hybrid", {
+            symbol,
+          }),
+        { ...retryOptions, maxRetries: 1 }
+      )
+    )
+  ).catch((error) => {
     console.error(
       `Failed to fetch Japanese stock sentiment (hybrid) for ${symbol}:`,
       error
     );
     throw new Error(
-      `日本株センチメント情報の取得に失敗しました（複合手法）: ${symbol}`
+      `日本株センチメント情報の取得に失敗しました（複合手法）: ${symbol} - ${extractErrorMessage(error)}`
     );
-  }
+  });
 }
 
 /**
  * 日本株の包括的な情報を取得（拡張版）
- * プロフィール、株価、説明、財務指標、ニュース、チャートデータを含む
  */
 export async function fetchJapaneseStockComprehensive(
   symbol: string
 ): Promise<any> {
   try {
-    const data = await invoke<any>("fetch_japanese_stock_comprehensive", {
-      symbol,
-    });
-    return data;
+    return await tdnetBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<any>("fetch_japanese_stock_comprehensive", { symbol }),
+        { ...retryOptions, maxRetries: 1 }
+      )
+    );
   } catch (error) {
     console.error(
       `Failed to fetch comprehensive Japanese stock data for ${symbol}:`,
       error
     );
-    throw new Error(`日本株包括情報の取得に失敗しました: ${symbol}`);
+    throw new Error(
+      `日本株包括情報の取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
   }
 }
 
@@ -397,28 +300,57 @@ export async function fetchJapaneseStockComprehensive(
  * 日本株の現在価格を取得
  */
 export async function fetchJapaneseStockPrice(symbol: string): Promise<any> {
-  try {
-    const priceData = await invoke<any>("fetch_japanese_stock_price", {
-      symbol,
-    });
-    return priceData;
-  } catch (error) {
-    console.error(`Failed to fetch Japanese stock price for ${symbol}:`, error);
-    throw new Error(`日本株価格の取得に失敗しました: ${symbol}`);
-  }
+  return cachedFetch(stockQuoteCache, `jp-price:${symbol}`, () =>
+    tdnetBreaker.execute(() =>
+      withRetry(
+        () => invoke<any>("fetch_japanese_stock_price", { symbol }),
+        retryOptions
+      )
+    )
+  ).catch((error) => {
+    console.error(
+      `Failed to fetch Japanese stock price for ${symbol}:`,
+      error
+    );
+    throw new Error(
+      `日本株価格の取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
+  });
 }
 
 /**
  * 日本株のチャートデータを取得
  */
 export async function fetchJapaneseStockChart(symbol: string): Promise<any> {
-  try {
-    const chartData = await invoke<any>("fetch_japanese_stock_chart", {
-      symbol,
-    });
-    return chartData;
-  } catch (error) {
-    console.error(`Failed to fetch Japanese stock chart for ${symbol}:`, error);
-    throw new Error(`日本株チャートの取得に失敗しました: ${symbol}`);
+  return cachedFetch(stockHistoryCache, `jp-chart:${symbol}`, () =>
+    tdnetBreaker.execute(() =>
+      withRetry(
+        () => invoke<any>("fetch_japanese_stock_chart", { symbol }),
+        retryOptions
+      )
+    )
+  ).catch((error) => {
+    console.error(
+      `Failed to fetch Japanese stock chart for ${symbol}:`,
+      error
+    );
+    throw new Error(
+      `日本株チャートの取得に失敗しました: ${symbol} - ${extractErrorMessage(error)}`
+    );
+  });
+}
+
+/**
+ * エラーオブジェクトからメッセージを抽出するヘルパー
+ */
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    // サーキットブレーカーのエラーはそのまま表示
+    if (error.name === "CircuitOpenError") {
+      return error.message;
+    }
+    return error.message;
   }
+  if (typeof error === "string") return error;
+  return "不明なエラー";
 }

@@ -2,7 +2,7 @@
  * 急騰・急落銘柄の情報
  */
 export interface SurgeStock {
-  symbol: string; // 銘柄コード (例: "7203.T", "AAPL")
+  symbol: string; // 銘柄コード (例: "7203.T")
   name: string; // 企業名
   changePercent: number; // 変動率 (%)
   currentPrice: number; // 現在価格
@@ -42,30 +42,6 @@ export class SurgeScannerService {
     "8035.T", // 東京エレクトロン
   ];
 
-  // 米国の主要銘柄
-  private usWatchlist = [
-    "AAPL",
-    "MSFT",
-    "GOOGL",
-    "AMZN",
-    "NVDA",
-    "META",
-    "TSLA",
-    "BRK.B",
-    "V",
-    "UNH",
-    "JNJ",
-    "WMT",
-    "JPM",
-    "MA",
-    "PG",
-    "XOM",
-    "HD",
-    "CVX",
-    "MRK",
-    "ABBV",
-  ];
-
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
@@ -93,27 +69,6 @@ export class SurgeScannerService {
       );
     } catch (error) {
       console.error("Failed to scan Japan market:", error);
-      return [];
-    }
-  }
-
-  /**
-   * 米国市場をスキャンして急騰・急落銘柄を検出
-   */
-  async scanUSMarket(threshold: number = 3): Promise<SurgeStock[]> {
-    try {
-      const symbols = await this.getUSSymbols();
-      const stocks = await this.checkPriceChanges(symbols);
-
-      const surgeStocks = stocks.filter(
-        (stock) => Math.abs(stock.changePercent) >= threshold
-      );
-
-      return surgeStocks.sort(
-        (a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)
-      );
-    } catch (error) {
-      console.error("Failed to scan US market:", error);
       return [];
     }
   }
@@ -153,60 +108,40 @@ export class SurgeScannerService {
   }
 
   /**
-   * 米国の監視対象銘柄を取得
-   */
-  private async getUSSymbols(): Promise<
-    Array<{ symbol: string; description: string }>
-  > {
-    const response = await fetch(
-      `${this.baseUrl}/stock/symbol?exchange=US&token=${this.apiKey}`
-    );
-
-    if (!response.ok) {
-      return this.usWatchlist.map((symbol) => ({
-        symbol,
-        description: symbol,
-      }));
-    }
-
-    const allSymbols = await response.json();
-
-    // テスト環境: モックデータをそのまま使用
-    if (allSymbols.length < 50) {
-      return allSymbols;
-    }
-
-    return allSymbols.filter((s: any) => this.usWatchlist.includes(s.symbol));
-  }
-
-  /**
-   * 各銘柄の価格変動をチェック
+   * 各銘柄の価格変動をチェック（レート制限対応: 順次取得）
    */
   private async checkPriceChanges(
     symbols: Array<{ symbol: string; description: string }>
   ): Promise<SurgeStock[]> {
-    const promises = symbols.map(async ({ symbol, description }) => {
+    const results: SurgeStock[] = [];
+
+    for (let i = 0; i < symbols.length; i++) {
+      const { symbol, description } = symbols[i];
+
+      // 2番目以降のリクエストの前に500ms待機（Finnhub レート制限回避）
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
       try {
         const quote = await this.getQuote(symbol);
 
         const changePercent = ((quote.c - quote.pc) / quote.pc) * 100;
 
-        return {
+        results.push({
           symbol,
           name: description,
           changePercent,
           currentPrice: quote.c,
           previousClose: quote.pc,
           timestamp: Date.now(),
-        };
+        });
       } catch (error) {
         console.error(`Failed to get quote for ${symbol}:`, error);
-        return null;
       }
-    });
+    }
 
-    const results = await Promise.all(promises);
-    return results.filter((r): r is SurgeStock => r !== null);
+    return results;
   }
 
   /**

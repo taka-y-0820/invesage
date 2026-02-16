@@ -1,9 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import { createChart, IChartApi, ISeriesApi, Time } from "lightweight-charts";
+import React from "react";
 import { useStockStore } from "../../store/useStockStore";
-import { useStockDataUpdater } from "../../hooks/useStockData";
 import { SurgeStock } from "../../services/scanner/surgeScannerService";
-import { NewsPanel } from "../NewsPanel";
 import { JapaneseStockSearch } from "../JapaneseStockSearch";
 import styles from "./Dashboard.module.css";
 
@@ -51,21 +48,6 @@ const Icons = {
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
     </svg>
   ),
-  Volume: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-      <rect x="9" y="9" width="6" height="6" />
-      <line x1="9" y1="1" x2="9" y2="4" />
-      <line x1="15" y1="1" x2="15" y2="4" />
-      <line x1="9" y1="20" x2="9" y2="23" />
-      <line x1="15" y1="20" x2="15" y2="23" />
-    </svg>
-  ),
-  Star: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26 12,2" />
-    </svg>
-  ),
   AlertTriangle: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -86,87 +68,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isMonitoring,
   onSelectStock,
 }) => {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
-
   const marketData = useStockStore((state) => state.marketData);
   const watchlist = useStockStore((state) => state.watchlist);
-  const currentStock = useStockStore((state) => state.currentStock);
-  const setActiveTab = useStockStore((state) => state.setActiveTab);
-
-  const { refetch } = useStockDataUpdater("NVDA", false);
-
-  // Initialize mini chart
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { color: "#0a0f14" },
-        textColor: "#64748b",
-      },
-      grid: {
-        vertLines: { color: "rgba(255,255,255,0.03)" },
-        horzLines: { color: "rgba(255,255,255,0.03)" },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: 350,
-      rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.1)",
-      },
-      timeScale: {
-        borderColor: "rgba(255,255,255,0.1)",
-        timeVisible: true,
-      },
-      crosshair: {
-        vertLine: { color: "rgba(45, 212, 191, 0.3)", width: 1, style: 2 },
-        horzLine: { color: "rgba(45, 212, 191, 0.3)", width: 1, style: 2 },
-      },
-    });
-
-    chartRef.current = chart;
-
-    const areaSeries = chart.addAreaSeries({
-      lineColor: "#2dd4bf",
-      topColor: "rgba(45, 212, 191, 0.3)",
-      bottomColor: "rgba(45, 212, 191, 0.02)",
-      lineWidth: 2,
-    });
-
-    seriesRef.current = areaSeries;
-
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.remove();
-    };
-  }, []);
-
-  // Update chart data
-  useEffect(() => {
-    if (seriesRef.current && currentStock.data.length > 0) {
-      const areaData = currentStock.data.map((d) => ({
-        time: d.time as Time,
-        value: d.close,
-      }));
-      seriesRef.current.setData(areaData);
-    }
-  }, [currentStock.data]);
-
-  // Fetch initial data
-  useEffect(() => {
-    if (currentStock.data.length === 0) {
-      refetch();
-    }
-  }, []);
 
   const formatNumber = (num: number, decimals = 2) => {
     return num.toLocaleString("en-US", {
@@ -175,11 +78,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     });
   };
 
-  const formatPrice = (price: number, market: "JP" | "US" = "JP") => {
-    if (market === "JP") {
-      return `¥${price.toLocaleString("ja-JP", { maximumFractionDigits: 0 })}`;
-    }
-    return `$${formatNumber(price)}`;
+  const formatPrice = (price: number) => {
+    return `¥${price.toLocaleString("ja-JP", { maximumFractionDigits: 0 })}`;
   };
 
   const formatChange = (change: number) => {
@@ -187,32 +87,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return `${sign}${formatNumber(change)}%`;
   };
 
-  // Mock data for metrics (in real app, derive from actual data)
   const metrics = {
     totalWatched: watchlist.length,
     surgeAlerts: surgeStocks.length,
     avgChange: surgeStocks.length > 0
       ? surgeStocks.reduce((acc, s) => acc + s.changePercent, 0) / surgeStocks.length
       : 0,
-    marketStatus: new Date().getHours() >= 9 && new Date().getHours() < 16 ? "Open" : "Closed",
+    marketStatus: new Date().getHours() >= 9 && new Date().getHours() < 15 ? "Open" : "Closed",
   };
-
-  // Sample watchlist data (in real app, fetch actual prices)
-  const watchlistData = watchlist.slice(0, 5).map((symbol, idx) => ({
-    symbol,
-    name: symbol === "NVDA" ? "NVIDIA Corp"
-        : symbol === "MSFT" ? "Microsoft Corp"
-        : symbol === "GOOGL" ? "Alphabet Inc"
-        : symbol === "AAPL" ? "Apple Inc"
-        : symbol === "TSLA" ? "Tesla Inc"
-        : symbol,
-    price: [142.58, 378.91, 176.23, 189.45, 248.50][idx] || 100,
-    change: [2.34, -0.87, 1.56, -1.23, 4.21][idx] || 0,
-  }));
 
   return (
     <div className={styles.dashboard}>
-      {/* Market Pulse - Live Indices */}
+      {/* Market Pulse - Nikkei 225 */}
       <section className={`${styles.marketPulse} ${styles.animateFadeInUp}`}>
         <div className={styles.marketPulseHeader}>
           <h2 className={styles.marketPulseTitle}>
@@ -227,31 +113,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
         <div className={styles.marketIndices}>
-          {Object.entries(marketData).map(([key, data]) => (
+          <div
+            className={`${styles.indexCard} ${
+              marketData.nikkei.trend === "up" ? styles.indexCardBullish : styles.indexCardBearish
+            }`}
+          >
+            <div className={styles.indexName}>Nikkei 225</div>
+            <div className={styles.indexValue}>
+              {marketData.nikkei.value > 0 ? formatNumber(marketData.nikkei.value, 2) : "---"}
+            </div>
             <div
-              key={key}
-              className={`${styles.indexCard} ${
-                data.trend === "up" ? styles.indexCardBullish : styles.indexCardBearish
+              className={`${styles.indexChange} ${
+                marketData.nikkei.trend === "up" ? styles.indexChangeBullish : styles.indexChangeBearish
               }`}
             >
-              <div className={styles.indexName}>
-                {key === "nikkei" ? "Nikkei 225" : key.toUpperCase()}
-              </div>
-              <div className={styles.indexValue}>
-                {data.value > 0 ? formatNumber(data.value, 2) : "---"}
-              </div>
-              <div
-                className={`${styles.indexChange} ${
-                  data.trend === "up" ? styles.indexChangeBullish : styles.indexChangeBearish
-                }`}
-              >
-                <span className={styles.changeArrow}>
-                  {data.trend === "up" ? <Icons.TrendingUp /> : <Icons.TrendingDown />}
-                </span>
-                {data.change}
-              </div>
+              <span className={styles.changeArrow}>
+                {marketData.nikkei.trend === "up" ? <Icons.TrendingUp /> : <Icons.TrendingDown />}
+              </span>
+              {marketData.nikkei.change}
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
@@ -380,10 +261,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className={styles.surgePriceRow}>
                       <div>
                         <div className={styles.surgePrice}>
-                          {formatPrice(stock.currentPrice, "JP")}
+                          {formatPrice(stock.currentPrice)}
                         </div>
                         <div className={styles.surgePrevPrice}>
-                          Prev: {formatPrice(stock.previousClose, "JP")}
+                          Prev: {formatPrice(stock.previousClose)}
                         </div>
                       </div>
                       {stock.volume && (
@@ -402,77 +283,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </section>
         </div>
 
-        {/* Watchlist Quick View */}
-        <div className={`${styles.gridThird} ${styles.animateFadeInUp} ${styles.animateDelay3}`}>
-          <section className={styles.watchlistSection}>
-            <div className={styles.watchlistHeader}>
-              <h3 className={styles.watchlistTitle}>Watchlist</h3>
-              <button
-                className={styles.watchlistViewAll}
-                onClick={() => setActiveTab("watchlist")}
-              >
-                View All
-              </button>
-            </div>
-            <div className={styles.watchlistTable}>
-              {watchlistData.map((item, idx) => (
-                <div
-                  key={item.symbol}
-                  className={styles.watchlistRow}
-                  onClick={() => onSelectStock({
-                    symbol: item.symbol,
-                    name: item.name,
-                    currentPrice: item.price,
-                    changePercent: item.change,
-                  })}
-                >
-                  <span className={styles.watchlistSymbol}>{item.symbol}</span>
-                  <span className={styles.watchlistName}>{item.name}</span>
-                  <span className={styles.watchlistPrice}>
-                    ${formatNumber(item.price)}
-                  </span>
-                  <span
-                    className={`${styles.watchlistChange} ${
-                      item.change >= 0
-                        ? styles.watchlistChangeBullish
-                        : styles.watchlistChangeBearish
-                    }`}
-                  >
-                    {formatChange(item.change)}
-                  </span>
-                  <MiniSparkline positive={item.change >= 0} />
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Chart Section */}
-        <div className={`${styles.gridTwoThirds} ${styles.animateFadeInUp} ${styles.animateDelay4}`}>
-          <section className={styles.chartSection}>
-            <div className={styles.chartHeader}>
-              <h3 className={styles.chartTitle}>
-                NVDA Performance
-              </h3>
-              <div className={styles.chartControls}>
-                {["1D", "1W", "1M", "3M", "1Y"].map((period) => (
-                  <button
-                    key={period}
-                    className={`${styles.chartTimeBtn} ${
-                      period === "1M" ? styles.chartTimeBtnActive : ""
-                    }`}
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div ref={chartContainerRef} className={styles.chartContainer} />
-          </section>
-        </div>
-
         {/* Japanese Stock Search */}
-        <div className={`${styles.gridThird} ${styles.animateFadeInUp} ${styles.animateDelay5}`}>
+        <div className={`${styles.gridThird} ${styles.animateFadeInUp} ${styles.animateDelay3}`}>
           <JapaneseStockSearch
             onStockSelect={(stock) =>
               onSelectStock({
@@ -484,44 +296,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }
           />
         </div>
-
-        {/* News Panel */}
-        <div className={`${styles.gridFull} ${styles.animateFadeInUp} ${styles.animateDelay5}`}>
-          <NewsPanel
-            symbols={["AAPL", "NVDA", "MSFT", "GOOGL", "TSLA"]}
-            maxItems={8}
-            title="Market News"
-            subtitle="Latest financial news and analysis"
-            autoRefresh={true}
-            refreshInterval={300000}
-          />
-        </div>
       </div>
     </div>
-  );
-};
-
-// Mini Sparkline Component
-const MiniSparkline: React.FC<{ positive: boolean }> = ({ positive }) => {
-  const points = positive
-    ? "0,20 5,18 10,15 15,17 20,12 25,14 30,8 35,10 40,5"
-    : "0,5 5,8 10,6 15,10 20,12 25,9 30,15 35,14 40,20";
-
-  return (
-    <svg
-      viewBox="0 0 40 25"
-      className={styles.watchlistSparkline}
-      style={{ width: 60, height: 24 }}
-    >
-      <polyline
-        points={points}
-        fill="none"
-        stroke={positive ? "#10b981" : "#ef4444"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 };
 

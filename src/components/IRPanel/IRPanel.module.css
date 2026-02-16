@@ -387,26 +387,36 @@
 }
 
 /* Loading */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-12);
+  padding: var(--space-8);
   color: var(--color-gray-500);
 }
 
 .loadingSpinner {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 3px solid var(--color-gray-200);
   border-top-color: var(--color-teal-600);
+  border-right-color: var(--color-teal-400);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
-  to {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
     transform: rotate(360deg);
   }
 }
@@ -414,6 +424,81 @@
 .loadingText {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Skeleton Loading */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  opacity: 0.7;
+}
+
+.skeletonBanner {
+  padding: var(--space-4);
+  background: var(--color-cream);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.skeletonPulse {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 25%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeletonSection {
+  padding: var(--space-5);
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+}
+
+.skeletonTable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeletonRow {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.skeletonItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
 }
 
 /* Error */
@@ -463,6 +548,203 @@
   background: var(--color-teal-50);
 }
 
+/* PDF Button in Release Item */
+.pdfButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px var(--space-2);
+  background: var(--color-bearish-light, #fef2f2);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  color: #dc2626;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1.4;
+}
+
+.pdfButton:hover {
+  background: #fecaca;
+  border-color: #dc2626;
+}
+
+/* PDF Viewer Modal */
+.pdfOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.pdfModal {
+  width: 100%;
+  max-width: 1000px;
+  height: 90vh;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.25s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.pdfHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-cream);
+  flex-shrink: 0;
+}
+
+.pdfHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-gray-700);
+}
+
+.pdfHeaderTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.pdfHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pdfExternalLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--color-gray-500);
+  transition: all var(--transition-fast);
+}
+
+.pdfExternalLink:hover {
+  background: var(--color-gray-100);
+  color: var(--color-teal-700);
+}
+
+.pdfCloseButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pdfCloseButton:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+.pdfBody {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.pdfFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.pdfLoading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-white);
+  z-index: 1;
+}
+
+.pdfErrorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-4);
+  color: var(--color-gray-400);
+  font-size: var(--text-sm);
+}
+
+.pdfErrorDetail {
+  font-size: var(--text-xs);
+  color: var(--color-gray-400);
+  max-width: 400px;
+  word-break: break-all;
+  margin: 0;
+}
+
+.pdfFallbackLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-teal-700);
+  color: var(--color-white);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.pdfFallbackLink:hover {
+  background: var(--color-teal-800);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .earningsTable {
@@ -480,5 +762,14 @@
 
   .searchSection {
     flex-direction: column;
+  }
+
+  .pdfOverlay {
+    padding: var(--space-2);
+  }
+
+  .pdfModal {
+    height: 95vh;
+    max-width: 100%;
   }
 }

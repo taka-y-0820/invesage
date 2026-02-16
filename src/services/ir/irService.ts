@@ -6,6 +6,9 @@ import {
   DividendInfo,
   IRCategory,
 } from "../../types";
+import { withRetry, isRetryableError } from "../../utils/retry";
+import { irInfoCache } from "../../utils/cache";
+import { finnhubBreaker, tdnetBreaker } from "../../utils/circuitBreaker";
 
 /**
  * IR情報取得サービス
@@ -67,9 +70,12 @@ async function fetchEarningsFromFinnhub(
   symbol: string
 ): Promise<EarningsData[]> {
   try {
-    const data = await invoke<FinnhubEarnings[]>("fetch_earnings_finnhub", {
-      symbol,
-    });
+    const data = await finnhubBreaker.execute(() =>
+      withRetry(
+        () => invoke<FinnhubEarnings[]>("fetch_earnings_finnhub", { symbol }),
+        { maxRetries: 2, baseDelay: 1500, shouldRetry: isRetryableError }
+      )
+    );
 
     return data.map((item) => ({
       period: `${item.year ?? ""}Q${item.quarter ?? ""}`,
@@ -90,9 +96,14 @@ async function fetchFinancialsFromFinnhub(
   symbol: string
 ): Promise<{ dividendYield?: number; payoutRatio?: number; eps?: number }> {
   try {
-    const data = await invoke<FinnhubBasicFinancials>(
-      "fetch_basic_financials_finnhub",
-      { symbol }
+    const data = await finnhubBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<FinnhubBasicFinancials>("fetch_basic_financials_finnhub", {
+            symbol,
+          }),
+        { maxRetries: 2, baseDelay: 1500, shouldRetry: isRetryableError }
+      )
     );
 
     return {
@@ -109,18 +120,80 @@ async function fetchFinancialsFromFinnhub(
   }
 }
 
+/** TDnetからのレスポンス型 */
+interface TDnetIRResponse {
+  symbol: string;
+  companyName: string;
+  lastUpdated: string;
+  irReleases: Array<{
+    id: string;
+    title: string;
+    category: string;
+    publishedAt: string;
+    summary?: string | null;
+    url?: string;
+    source: string;
+  }>;
+  earnings: EarningsData[];
+  dividend?: DividendInfo | null;
+  nextEarningsDate?: string | null;
+  irPageUrl?: string | null;
+  fiscalYearEnd?: string | null;
+  error?: string;
+}
+
 /**
- * 日本株のIR情報をTauri バックエンド経由で取得
+ * 日本株のIR情報をTDnetスクレイピング経由で取得
  */
 async function fetchJapaneseIRInfo(
   symbol: string
 ): Promise<CompanyIRInfo | null> {
   const normalizedSymbol = normalizeJapaneseSymbol(symbol);
   try {
-    const irInfo = await invoke<CompanyIRInfo>("fetch_japanese_ir_info", {
-      symbol: normalizedSymbol,
-    });
-    return irInfo;
+    const data = await tdnetBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<TDnetIRResponse>("fetch_japanese_ir_info", {
+            symbol: normalizedSymbol,
+          }),
+        { maxRetries: 1, baseDelay: 2000, shouldRetry: isRetryableError }
+      )
+    );
+
+    if (data.error) {
+      console.error(`TDnet error for ${normalizedSymbol}: ${data.error}`);
+      return null;
+    }
+
+    // IRカテゴリを正規化
+    const validCategories: IRCategory[] = [
+      "earnings", "guidance", "dividend", "shareholder",
+      "corporate", "disclosure", "presentation", "other",
+    ];
+
+    const irReleases: IRRelease[] = (data.irReleases || []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      category: validCategories.includes(r.category as IRCategory)
+        ? (r.category as IRCategory)
+        : "other",
+      publishedAt: r.publishedAt,
+      summary: r.summary || undefined,
+      url: r.url || undefined,
+      source: r.source || "TDnet",
+    }));
+
+    return {
+      symbol: data.symbol || normalizedSymbol,
+      companyName: data.companyName || normalizedSymbol,
+      lastUpdated: data.lastUpdated || new Date().toISOString(),
+      irReleases,
+      earnings: data.earnings || [],
+      dividend: data.dividend || undefined,
+      nextEarningsDate: data.nextEarningsDate || undefined,
+      irPageUrl: data.irPageUrl || undefined,
+      fiscalYearEnd: data.fiscalYearEnd || undefined,
+    };
   } catch (error) {
     console.error(
       `Failed to fetch Japanese IR info for ${normalizedSymbol}:`,
@@ -215,46 +288,53 @@ export async function fetchCompanyIRInfo(
   symbol: string,
   companyName?: string
 ): Promise<CompanyIRInfo> {
+  // キャッシュをチェック（TTL: 15分）
+  const cacheKey = `ir:${symbol}`;
+  const cached = irInfoCache.get(cacheKey);
+  if (cached) return cached as CompanyIRInfo;
+
   const isJP = isJapaneseStock(symbol);
+
+  let result: CompanyIRInfo;
 
   if (isJP) {
     // 日本株：バックエンド経由でIR情報を取得
     const irInfo = await fetchJapaneseIRInfo(symbol);
-    if (irInfo) {
-      return irInfo;
-    }
-    // フォールバック: 空のIR情報を返す
-    return createEmptyIRInfo(symbol, companyName);
+    result = irInfo ?? createEmptyIRInfo(symbol, companyName);
+  } else {
+    // 米国株：Finnhub APIから取得
+    const [earnings, financials, newsData] = await Promise.all([
+      fetchEarningsFromFinnhub(symbol),
+      fetchFinancialsFromFinnhub(symbol),
+      fetchCompanyNewsForIR(symbol),
+    ]);
+
+    const irReleases = classifyNewsAsIR(newsData);
+
+    const dividend: DividendInfo | undefined = financials.dividendYield
+      ? {
+          fiscalYear: new Date().getFullYear().toString(),
+          dividendYield: financials.dividendYield,
+          payoutRatio: financials.payoutRatio,
+        }
+      : undefined;
+
+    result = {
+      symbol,
+      companyName: companyName || symbol,
+      lastUpdated: new Date().toISOString(),
+      irReleases,
+      earnings,
+      dividend,
+      nextEarningsDate: undefined,
+      irPageUrl: undefined,
+      fiscalYearEnd: undefined,
+    };
   }
 
-  // 米国株：Finnhub APIから取得
-  const [earnings, financials, newsData] = await Promise.all([
-    fetchEarningsFromFinnhub(symbol),
-    fetchFinancialsFromFinnhub(symbol),
-    fetchCompanyNewsForIR(symbol),
-  ]);
-
-  const irReleases = classifyNewsAsIR(newsData);
-
-  const dividend: DividendInfo | undefined = financials.dividendYield
-    ? {
-        fiscalYear: new Date().getFullYear().toString(),
-        dividendYield: financials.dividendYield,
-        payoutRatio: financials.payoutRatio,
-      }
-    : undefined;
-
-  return {
-    symbol,
-    companyName: companyName || symbol,
-    lastUpdated: new Date().toISOString(),
-    irReleases,
-    earnings,
-    dividend,
-    nextEarningsDate: undefined,
-    irPageUrl: undefined,
-    fiscalYearEnd: undefined,
-  };
+  // 結果をキャッシュに保存
+  irInfoCache.set(cacheKey, result);
+  return result;
 }
 
 /**
@@ -279,19 +359,25 @@ async function fetchCompanyNewsForIR(
       .toISOString()
       .split("T")[0];
 
-    const news = await invoke<
-      Array<{
-        category: string;
-        datetime: number;
-        headline: string;
-        id: number;
-        image: string;
-        related: string;
-        source: string;
-        summary: string;
-        url: string;
-      }>
-    >("fetch_company_news_finnhub", { symbol, from, to });
+    const news = await finnhubBreaker.execute(() =>
+      withRetry(
+        () =>
+          invoke<
+            Array<{
+              category: string;
+              datetime: number;
+              headline: string;
+              id: number;
+              image: string;
+              related: string;
+              source: string;
+              summary: string;
+              url: string;
+            }>
+          >("fetch_company_news_finnhub", { symbol, from, to }),
+        { maxRetries: 2, baseDelay: 1500, shouldRetry: isRetryableError }
+      )
+    );
 
     return news;
   } catch (error) {

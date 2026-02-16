@@ -33,8 +33,6 @@ interface StockStore {
   // 市場データ
   marketData: {
     nikkei: MarketData;
-    sp500: MarketData;
-    nasdaq: MarketData;
   };
 
   // 株価データ
@@ -45,7 +43,7 @@ interface StockStore {
     lastUpdate: Date | null;
   };
 
-  // 企業情報とセンチメントデータ（新規追加）
+  // 企業情報とセンチメントデータ
   companyProfiles: Record<string, CompanyProfile>;
   newsSentiments: Record<string, NewsSentiment>;
 
@@ -99,18 +97,6 @@ const initialMarketData = {
     change: "--",
     trend: "up" as const,
   },
-  sp500: {
-    symbol: "SPX",
-    value: 0,
-    change: "--",
-    trend: "up" as const,
-  },
-  nasdaq: {
-    symbol: "IXIC",
-    value: 0,
-    change: "--",
-    trend: "up" as const,
-  },
 };
 
 export const useStockStore = create<StockStore>((set) => ({
@@ -129,7 +115,7 @@ export const useStockStore = create<StockStore>((set) => ({
     lastUpdate: null,
   },
 
-  // 企業情報とセンチメントデータ（新規追加）
+  // 企業情報とセンチメントデータ
   companyProfiles: {},
   newsSentiments: {},
 
@@ -137,7 +123,7 @@ export const useStockStore = create<StockStore>((set) => ({
   irInfoCache: {},
 
   screeningResults: [],
-  watchlist: ["NVDA", "MSFT", "GOOGL", "AAPL", "TSLA"],
+  watchlist: ["7203.T", "9984.T", "6758.T", "7974.T", "8035.T"],
   isLoading: false,
   error: null,
   autoUpdateEnabled: true,

@@ -7,7 +7,7 @@ fixture`CompanyInfo E2E`.page`${BASE_URL}`;
 
 test("CompanyInfo loads and can query", async (t) => {
   const input = Selector(
-    'input[placeholder="銘柄シンボル (例: 7203.T, AAPL)"]'
+    'input[placeholder="銘柄シンボル (例: 7203.T)"]'
   );
   const button = Selector("button").withText("情報取得");
 

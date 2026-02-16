@@ -1,4 +1,87 @@
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+
+/// グローバルHTTPクライアント（タイムアウト設定済み）
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()
+        .expect("Failed to create HTTP client")
+});
+
+/// Pythonスクリプトのタイムアウト（秒）
+const PYTHON_SCRIPT_TIMEOUT_SECS: u64 = 30;
+
+/// Pythonスクリプトをタイムアウト付きで実行するヘルパー
+async fn run_python_script_with_timeout(
+    script_path: &std::path::Path,
+    args: &[&str],
+    timeout_secs: u64,
+) -> Result<(String, String), String> {
+    use tokio::process::Command as TokioCommand;
+    use tokio::time::{timeout, Duration};
+
+    if !script_path.exists() {
+        return Err(format!("Script not found: {:?}", script_path));
+    }
+
+    let mut cmd = TokioCommand::new("python");
+    cmd.arg("-X").arg("utf8").arg(script_path);
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    if let Ok(cwd) = std::env::current_dir() {
+        cmd.current_dir(cwd);
+    }
+
+    let child = cmd
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            format!(
+                "Failed to execute Python script: {}. Script path: {:?}\n\
+                Make sure Python is installed and available in PATH.",
+                e, script_path
+            )
+        })?;
+
+    let output = timeout(Duration::from_secs(timeout_secs), child.wait_with_output())
+        .await
+        .map_err(|_| {
+            format!(
+                "Python script timed out after {} seconds: {:?}",
+                timeout_secs, script_path
+            )
+        })?
+        .map_err(|e| format!("Failed to wait for Python script: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if !output.status.success() {
+        return Err(format!(
+            "Python script failed (exit code: {:?}): stderr: {}",
+            output.status.code(),
+            stderr
+        ));
+    }
+
+    if stdout.trim().is_empty() {
+        return Err(format!(
+            "Python script returned empty output. stderr: {}",
+            stderr
+        ));
+    }
+
+    if !stderr.is_empty() {
+        eprintln!("🐍 Script stderr (info): {}", stderr);
+    }
+
+    Ok((stdout, stderr))
+}
 
 // .envファイルを読み込む（開発時のみ）
 fn load_env() {
@@ -6,9 +89,7 @@ fn load_env() {
     {
         if let Err(e) = dotenvy::dotenv() {
             println!("⚠️  .env file not found or error loading: {}", e);
-            println!(
-                "💡 Create a .env file in the project root with ALPHA_VANTAGE_API_KEY=your_key"
-            );
+            println!("💡 Create a .env file in the project root with FINNHUB_API_KEY=your_key");
         } else {
             println!("✅ .env file loaded successfully");
         }
@@ -74,79 +155,32 @@ pub struct NewsArticle {
     pub url: String,
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+/// Yahoo Finance APIからレスポンスを取得（リトライなし内部関数）
+async fn fetch_yahoo_chart_raw(url: &str) -> Result<(reqwest::StatusCode, String), String> {
+    let response = HTTP_CLIENT
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("API request timed out: {}", e)
+            } else if e.is_connect() {
+                format!("API connection failed: {}", e)
+            } else {
+                format!("API request failed: {}", e)
+            }
+        })?;
+
+    let status = response.status();
+    let text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    Ok((status, text))
 }
 
-/// Alpha Vantage APIから株価を取得（レート制限が緩い）
-#[tauri::command]
-async fn fetch_stock_quote_alpha_vantage(symbol: String) -> Result<StockQuote, String> {
-    let api_key = std::env::var("ALPHA_VANTAGE_API_KEY").unwrap_or_else(|_| "demo".to_string());
-
-    let url = format!(
-        "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={}&apikey={}",
-        symbol, api_key
-    );
-
-    println!("Fetching quote from Alpha Vantage: {}", symbol);
-
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    // Alpha Vantageのレスポンス形式
-    let quote = &json["Global Quote"];
-
-    // エラーチェック
-    if quote.is_null() || json.get("Note").is_some() {
-        return Err(format!("API limit or invalid symbol: {}", symbol));
-    }
-
-    let price = quote["05. price"]
-        .as_str()
-        .and_then(|s| s.parse::<f64>().ok())
-        .unwrap_or(0.0);
-
-    let change = quote["09. change"]
-        .as_str()
-        .and_then(|s| s.parse::<f64>().ok())
-        .unwrap_or(0.0);
-
-    let change_percent_str = quote["10. change percent"].as_str().unwrap_or("0%");
-
-    let change_percent = change_percent_str
-        .trim_end_matches('%')
-        .parse::<f64>()
-        .unwrap_or(0.0);
-
-    let volume = quote["06. volume"]
-        .as_str()
-        .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(0);
-
-    println!(
-        "Successfully fetched {}: price={}, change={}%",
-        symbol, price, change_percent
-    );
-
-    Ok(StockQuote {
-        symbol: symbol.clone(),
-        price,
-        change,
-        change_percent,
-        volume,
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    })
-}
-
-/// Yahoo Finance APIからリアルタイム株価を取得
+/// Yahoo Finance APIからリアルタイム株価を取得（リトライ付き）
 #[tauri::command]
 async fn fetch_stock_quote(symbol: String) -> Result<StockQuote, String> {
     // Yahoo Finance API (v8) - 無料で利用可能
@@ -157,34 +191,66 @@ async fn fetch_stock_quote(symbol: String) -> Result<StockQuote, String> {
 
     println!("Fetching quote for: {}", symbol);
 
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
+    // 最大3回リトライ（429 Too Many Requests 対策）
+    let max_retries = 3;
+    let mut last_status = reqwest::StatusCode::OK;
+    let mut last_text = String::new();
 
-    let status = response.status();
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            // 指数バックオフ: 2秒, 4秒, 8秒
+            let delay = 2000u64 * (1u64 << (attempt - 1));
+            println!(
+                "⏳ Retry {}/{} for {} after {}ms delay...",
+                attempt, max_retries, symbol, delay
+            );
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+        }
+
+        let (status, text) = fetch_yahoo_chart_raw(&url).await?;
+        last_status = status;
+        last_text = text;
+
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            println!(
+                "⚠️ Rate limited (429) for {} (attempt {}/{})",
+                symbol,
+                attempt + 1,
+                max_retries + 1
+            );
+            continue;
+        }
+
+        // 429以外のレスポンスはリトライしない
+        break;
+    }
+
+    // 最終的に429のままの場合
+    if last_status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        return Err(format!(
+            "Rate limited (429) for {} after {} retries. Please try again later.",
+            symbol, max_retries
+        ));
+    }
 
     // エラー時のみレスポンスをログ出力
-    if !status.is_success() || text.contains("error") {
+    if !last_status.is_success() || last_text.contains("error") {
         println!(
             "Response for {} (status {}): {}",
             symbol,
-            status,
-            if text.len() > 300 {
-                &text[..300]
+            last_status,
+            if last_text.len() > 300 {
+                &last_text[..300]
             } else {
-                &text
+                &last_text
             }
         );
     }
 
-    let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+    let json: serde_json::Value = serde_json::from_str(&last_text).map_err(|e| {
         format!(
             "Failed to parse JSON for {}: {} (status: {})",
-            symbol, e, status
+            symbol, e, last_status
         )
     })?;
 
@@ -247,136 +313,6 @@ async fn fetch_stock_quote(symbol: String) -> Result<StockQuote, String> {
     })
 }
 
-/// Alpha Vantage APIから株価履歴を取得
-#[tauri::command]
-async fn fetch_stock_history_alpha_vantage(
-    symbol: String,
-    period: String,
-) -> Result<Vec<StockDataPoint>, String> {
-    let api_key = std::env::var("ALPHA_VANTAGE_API_KEY").unwrap_or_else(|_| {
-        println!("⚠️  ALPHA_VANTAGE_API_KEY not found in environment, using demo key");
-        "demo".to_string()
-    });
-
-    println!(
-        "📊 Using API key: {}...",
-        &api_key.chars().take(4).collect::<String>()
-    );
-
-    // periodに応じてoutputsizeを決定
-    let outputsize = if period == "1mo" || period == "1d" || period == "5d" {
-        "compact" // 最新100日分
-    } else {
-        "full" // 全データ
-    };
-
-    let url = format!(
-        "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={}&outputsize={}&apikey={}",
-        symbol, outputsize, api_key
-    );
-
-    println!(
-        "Fetching history from Alpha Vantage: {} ({})",
-        symbol, outputsize
-    );
-
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
-
-    let status = response.status();
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
-
-    // レスポンスの最初の部分をログ出力
-    println!(
-        "📥 API Response (first 500 chars): {}",
-        if text.len() > 500 {
-            &text[..500]
-        } else {
-            &text
-        }
-    );
-
-    let json: serde_json::Value = serde_json::from_str(&text)
-        .map_err(|e| format!("Failed to parse JSON: {} (status: {})", e, status))?;
-
-    // エラーメッセージをチェック
-    if let Some(error_msg) = json.get("Error Message") {
-        return Err(format!("API Error: {}", error_msg));
-    }
-
-    if let Some(note) = json.get("Note") {
-        return Err(format!("API Note (rate limit?): {}", note));
-    }
-
-    let time_series = &json["Time Series (Daily)"];
-
-    if time_series.is_null() {
-        println!("❌ No 'Time Series (Daily)' found in response");
-        println!(
-            "📄 Full response: {}",
-            serde_json::to_string_pretty(&json).unwrap_or_default()
-        );
-        return Err(format!("No data available for {}", symbol));
-    }
-
-    let mut data_points = Vec::new();
-
-    if let Some(obj) = time_series.as_object() {
-        let mut dates: Vec<_> = obj.keys().collect();
-        dates.sort();
-        dates.reverse(); // 新しい順
-
-        for date in dates.iter().take(100) {
-            // 最大100日分
-            if let Some(day_data) = obj.get(*date) {
-                let open = day_data["1. open"]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .unwrap_or(0.0);
-                let high = day_data["2. high"]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .unwrap_or(0.0);
-                let low = day_data["3. low"]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .unwrap_or(0.0);
-                let close = day_data["4. close"]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .unwrap_or(0.0);
-                let volume = day_data["5. volume"]
-                    .as_str()
-                    .and_then(|s| s.parse::<i64>().ok())
-                    .unwrap_or(0);
-
-                data_points.push(StockDataPoint {
-                    time: date.to_string(),
-                    open,
-                    high,
-                    low,
-                    close,
-                    volume,
-                });
-            }
-        }
-    }
-
-    data_points.reverse(); // 古い順に戻す
-
-    println!(
-        "✅ Fetched {} data points for {}",
-        data_points.len(),
-        symbol
-    );
-
-    Ok(data_points)
-}
-
 /// 株価の履歴データを取得
 #[tauri::command]
 async fn fetch_stock_history(
@@ -389,15 +325,47 @@ async fn fetch_stock_history(
         symbol, period
     );
 
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
+    // 最大3回リトライ（429 Too Many Requests 対策）
+    let max_retries = 3;
+    let mut last_status = reqwest::StatusCode::OK;
+    let mut last_text = String::new();
 
-    let status = response.status();
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            let delay = 2000u64 * (1u64 << (attempt - 1));
+            println!(
+                "⏳ Retry {}/{} for {} history after {}ms delay...",
+                attempt, max_retries, symbol, delay
+            );
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+        }
+
+        let (status, text) = fetch_yahoo_chart_raw(&url).await?;
+        last_status = status;
+        last_text = text;
+
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            println!(
+                "⚠️ Rate limited (429) for {} history (attempt {}/{})",
+                symbol,
+                attempt + 1,
+                max_retries + 1
+            );
+            continue;
+        }
+
+        break;
+    }
+
+    if last_status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        return Err(format!(
+            "Rate limited (429) for {} history after {} retries",
+            symbol, max_retries
+        ));
+    }
+
+    let status = last_status;
+    let text = last_text;
 
     let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
         format!(
@@ -495,136 +463,17 @@ async fn fetch_multiple_quotes(symbols: Vec<String>) -> Result<Vec<StockQuote>, 
     Ok(quotes)
 }
 
-/// Finnhub APIから企業プロフィールを取得（セクター情報含む）
+/// Finnhub APIから最新ニュースを取得（APIキー付き）
 #[tauri::command]
-async fn fetch_company_profile_finnhub(symbol: String) -> Result<CompanyProfile, String> {
-    let api_key = std::env::var("FINNHUB_API_KEY").unwrap_or_else(|_| "demo".to_string());
-
-    let url = format!(
-        "https://finnhub.io/api/v1/stock/profile2?symbol={}&token={}",
-        symbol, api_key
-    );
-
-    println!("📊 Fetching company profile from Finnhub: {}", symbol);
-    println!("🔗 URL: {}", url.replace(&api_key, "***"));
-
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
-
-    let status = response.status();
-    println!("📡 Response status: {}", status);
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    println!(
-        "📦 Response JSON: {}",
-        serde_json::to_string_pretty(&json).unwrap_or_else(|_| "Invalid JSON".to_string())
-    );
-
-    // エラーチェック
-    if json.get("error").is_some() {
-        return Err(format!("API error: {}", json["error"]));
-    }
-
-    if json.is_null() || json.get("name").is_none() {
-        return Err(format!(
-            "No data found for symbol: {} (empty response from API)",
-            symbol
-        ));
-    }
-
-    let profile = CompanyProfile {
-        symbol: symbol.clone(),
-        name: json["name"].as_str().unwrap_or("Unknown").to_string(),
-        country: json["country"].as_str().unwrap_or("").to_string(),
-        currency: json["currency"].as_str().unwrap_or("USD").to_string(),
-        exchange: json["exchange"].as_str().unwrap_or("").to_string(),
-        market_capitalization: json["marketCapitalization"].as_f64().unwrap_or(0.0),
-        industry: json["finnhubIndustry"].as_str().unwrap_or("").to_string(),
-        sector: json["finnhubIndustry"].as_str().unwrap_or("").to_string(), // セクター情報
-        weburl: json["weburl"].as_str().unwrap_or("").to_string(),
-        logo: json["logo"].as_str().unwrap_or("").to_string(),
-    };
-
-    println!(
-        "✅ Company profile fetched: {} ({})",
-        profile.name, profile.sector
-    );
-
-    Ok(profile)
-}
-
-/// Finnhub APIからニュースセンチメントを取得（注目度測定）
-#[tauri::command]
-async fn fetch_news_sentiment_finnhub(symbol: String) -> Result<NewsSentiment, String> {
-    let api_key = std::env::var("FINNHUB_API_KEY").unwrap_or_else(|_| "demo".to_string());
-
-    let url = format!(
-        "https://finnhub.io/api/v1/news-sentiment?symbol={}&token={}",
-        symbol, api_key
-    );
-
-    println!("📰 Fetching news sentiment from Finnhub: {}", symbol);
-    println!("🔗 URL: {}", url.replace(&api_key, "***"));
-
-    let response = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("API request failed: {}", e))?;
-
-    let status = response.status();
-    println!("📡 Response status: {}", status);
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-    println!(
-        "📦 Response JSON: {}",
-        serde_json::to_string_pretty(&json).unwrap_or_else(|_| "Invalid JSON".to_string())
-    );
-
-    // エラーチェック
-    if json.get("error").is_some() {
-        return Err(format!("API error: {}", json["error"]));
-    }
-
-    let sentiment_data = &json["sentiment"];
-    let buzz_data = &json["buzz"];
-
-    let sentiment = NewsSentiment {
-        symbol: symbol.clone(),
-        sentiment: sentiment_data["companyNewsScore"].as_f64().unwrap_or(0.0),
-        buzz_volume: buzz_data["articlesInLastWeek"].as_f64().unwrap_or(0.0),
-        company_news_score: sentiment_data["companyNewsScore"].as_f64().unwrap_or(0.0),
-        sector_average_bullish_percent: sentiment_data["sectorAverageBullishPercent"]
-            .as_f64()
-            .unwrap_or(0.0),
-        sector_average_news_score: sentiment_data["sectorAverageNewsScore"]
-            .as_f64()
-            .unwrap_or(0.0),
-    };
-
-    println!(
-        "✅ News sentiment: score={:.2}, buzz={:.0}",
-        sentiment.sentiment, sentiment.buzz_volume
-    );
-
-    Ok(sentiment)
-}
-
-/// Finnhub APIから最新ニュースを取得
-#[tauri::command]
-async fn fetch_company_news_finnhub(
+async fn fetch_company_news_finnhub_with_key(
     symbol: String,
     from: String,
     to: String,
+    api_key: String,
 ) -> Result<Vec<NewsArticle>, String> {
-    let api_key = std::env::var("FINNHUB_API_KEY").unwrap_or_else(|_| "demo".to_string());
+    if api_key.is_empty() || api_key == "demo" {
+        return Err("有効なAPIキーが設定されていません".to_string());
+    }
 
     let url = format!(
         "https://finnhub.io/api/v1/company-news?symbol={}&from={}&to={}&token={}",
@@ -633,9 +482,17 @@ async fn fetch_company_news_finnhub(
 
     println!("📰 Fetching company news from Finnhub: {}", symbol);
 
-    let response = reqwest::get(&url)
+    let response = HTTP_CLIENT
+        .get(&url)
+        .send()
         .await
-        .map_err(|e| format!("API request failed: {}", e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Finnhub API request timed out: {}", e)
+            } else {
+                format!("Finnhub API request failed: {}", e)
+            }
+        })?;
 
     let json: serde_json::Value = response
         .json()
@@ -666,83 +523,66 @@ async fn fetch_company_news_finnhub(
     Ok(articles)
 }
 
-/// Pythonスクリプトで日本株の企業プロフィールを取得（yfinance使用）
+/// Finnhub APIから最新ニュースを取得（既存の環境変数版 - 互換性のため保持）
 #[tauri::command]
-async fn fetch_japanese_stock_profile(symbol: String) -> Result<CompanyProfile, String> {
-    println!("🐍 Fetching Japanese stock profile via Python: {}", symbol);
+async fn fetch_company_news_finnhub(
+    symbol: String,
+    from: String,
+    to: String,
+) -> Result<Vec<NewsArticle>, String> {
+    let api_key = std::env::var("FINNHUB_API_KEY").unwrap_or_else(|_| "demo".to_string());
 
-    // Pythonスクリプトのパスを取得
-    let script_path = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?
-        .join("../scripts/fetch_japanese_stock.py");
-
-    // Pythonスクリプトを実行
-    let output = std::process::Command::new("python")
-        .arg(script_path)
-        .arg("profile")
-        .arg(&symbol)
-        .output()
-        .map_err(|e| format!("Failed to execute Python script: {}. Make sure Python is installed and yfinance is available.", e))?;
-
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Python script error: {}", error));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    println!("🐍 Python output: {}", stdout);
-
-    // JSONをパース
-    let profile: CompanyProfile = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse Python output: {}", e))?;
-
-    println!(
-        "✅ Japanese stock profile fetched: {} ({})",
-        profile.name, profile.sector
+    let url = format!(
+        "https://finnhub.io/api/v1/company-news?symbol={}&from={}&to={}&token={}",
+        symbol, from, to, api_key
     );
 
-    Ok(profile)
-}
+    println!("📰 Fetching company news from Finnhub: {}", symbol);
 
-/// Pythonスクリプトで日本株のニュースセンチメントを取得
-#[tauri::command]
-async fn fetch_japanese_stock_sentiment(symbol: String) -> Result<NewsSentiment, String> {
-    println!(
-        "🐍 Fetching Japanese stock sentiment via Python: {}",
-        symbol
-    );
+    let response = HTTP_CLIENT
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Finnhub API request timed out: {}", e)
+            } else {
+                format!("Finnhub API request failed: {}", e)
+            }
+        })?;
 
-    let script_path = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?
-        .join("../scripts/fetch_japanese_stock.py");
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
-    let output = std::process::Command::new("python")
-        .arg(script_path)
-        .arg("sentiment")
-        .arg(&symbol)
-        .output()
-        .map_err(|e| format!("Failed to execute Python script: {}", e))?;
+    let mut articles = Vec::new();
 
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Python script error: {}", error));
+    if let Some(news_array) = json.as_array() {
+        for news in news_array.iter().take(10) {
+            // 最新10件
+            articles.push(NewsArticle {
+                category: news["category"].as_str().unwrap_or("").to_string(),
+                datetime: news["datetime"].as_i64().unwrap_or(0),
+                headline: news["headline"].as_str().unwrap_or("").to_string(),
+                id: news["id"].as_i64().unwrap_or(0),
+                image: news["image"].as_str().unwrap_or("").to_string(),
+                related: news["related"].as_str().unwrap_or("").to_string(),
+                source: news["source"].as_str().unwrap_or("").to_string(),
+                summary: news["summary"].as_str().unwrap_or("").to_string(),
+                url: news["url"].as_str().unwrap_or("").to_string(),
+            });
+        }
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    println!("✅ Fetched {} news articles", articles.len());
 
-    let sentiment: NewsSentiment = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse Python output: {}", e))?;
-
-    println!("✅ Japanese stock sentiment fetched");
-
-    Ok(sentiment)
+    Ok(articles)
 }
 
 /// 拡張された包括的な日本株情報を取得
 #[tauri::command]
 async fn fetch_japanese_stock_comprehensive(symbol: String) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
     println!(
         "🔄 Enhanced comprehensive Japanese stock fetch for: {}",
         symbol
@@ -752,48 +592,17 @@ async fn fetch_japanese_stock_comprehensive(symbol: String) -> Result<serde_json
         .map_err(|e| format!("Failed to get current directory: {}", e))?
         .join("../scripts/enhanced_japanese_stock.py");
 
-    // スクリプトファイルの存在確認
-    if !script_path.exists() {
-        return Err(format!("Enhanced script not found: {:?}", script_path));
-    }
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &["comprehensive", &symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
 
-    let output = Command::new("python")
-        .arg(script_path.clone())
-        .arg("comprehensive")
-        .arg(&symbol)
-        .current_dir(std::env::current_dir().unwrap())
-        .output()
-        .map_err(|e| format!("Enhanced script execution failed: {}", e))?;
-
-    let stderr_output = String::from_utf8_lossy(&output.stderr);
-    let stdout_output = String::from_utf8_lossy(&output.stdout);
-
-    if !output.status.success() {
-        eprintln!("⚠️ Enhanced script stderr: {}", stderr_output);
-        return Err(format!(
-            "Enhanced script failed with exit code: {:?}, stderr: {}",
-            output.status.code(),
-            stderr_output
-        ));
-    }
-
-    // デバッグ出力
-    eprintln!("Enhanced script stdout: {}", stdout_output);
-    if !stderr_output.is_empty() {
-        eprintln!("Enhanced script stderr (info): {}", stderr_output);
-    }
-
-    if stdout_output.trim().is_empty() {
-        return Err(format!(
-            "Enhanced script returned empty output for {}",
-            symbol
-        ));
-    }
-
-    serde_json::from_str(&stdout_output).map_err(|e| {
+    serde_json::from_str(&stdout).map_err(|e| {
         format!(
             "Enhanced JSON parse error: {}. Raw output: {}",
-            e, stdout_output
+            e, stdout
         )
     })
 }
@@ -801,56 +610,38 @@ async fn fetch_japanese_stock_comprehensive(symbol: String) -> Result<serde_json
 /// 現在の株価情報を取得
 #[tauri::command]
 async fn fetch_japanese_stock_price(symbol: String) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
     println!("💰 Fetching current stock price for: {}", symbol);
 
     let script_path = std::env::current_dir()
         .map_err(|e| format!("Failed to get current directory: {}", e))?
         .join("../scripts/enhanced_japanese_stock.py");
 
-    let output = Command::new("python")
-        .arg(script_path)
-        .arg("price")
-        .arg(&symbol)
-        .current_dir(std::env::current_dir().unwrap())
-        .output()
-        .map_err(|e| format!("Price fetch script execution failed: {}", e))?;
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &["price", &symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Price fetch script failed: {}", stderr));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
     serde_json::from_str(&stdout).map_err(|e| format!("Price JSON parse error: {}", e))
 }
 
 /// チャートデータを取得
 #[tauri::command]
 async fn fetch_japanese_stock_chart(symbol: String) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
     println!("📊 Fetching chart data for: {}", symbol);
 
     let script_path = std::env::current_dir()
         .map_err(|e| format!("Failed to get current directory: {}", e))?
         .join("../scripts/enhanced_japanese_stock.py");
 
-    let output = Command::new("python")
-        .arg(script_path)
-        .arg("chart")
-        .arg(&symbol)
-        .current_dir(std::env::current_dir().unwrap())
-        .output()
-        .map_err(|e| format!("Chart fetch script execution failed: {}", e))?;
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &["chart", &symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Chart fetch script failed: {}", stderr));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
     serde_json::from_str(&stdout).map_err(|e| format!("Chart JSON parse error: {}", e))
 }
 
@@ -866,60 +657,17 @@ async fn fetch_japanese_stock_profile_hybrid(symbol: String) -> Result<CompanyPr
         .map_err(|e| format!("Failed to get current directory: {}", e))?
         .join("../scripts/scrape_japanese_stock.py");
 
-    // スクリプトファイルの存在確認
-    if !script_path.exists() {
-        return Err(format!("Scraping script not found: {:?}", script_path));
-    }
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &["profile", &symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
 
-    let output = std::process::Command::new("python")
-        .arg("-X")
-        .arg("utf8") // UTF-8モードを強制
-        .arg(script_path.clone())
-        .arg("profile")
-        .arg(&symbol)
-        .output()
-        .map_err(|e| {
-            format!(
-                "Failed to execute Python scraping script: {}. \n\
-                Script path: {:?}\n\
-                Make sure Python is installed and available in PATH.",
-                e, script_path
-            )
-        })?;
-
-    let stderr_output = String::from_utf8(output.stderr)
-        .map_err(|e| format!("Failed to decode stderr as UTF-8: {}", e))?;
-    let stdout_output = String::from_utf8(output.stdout)
-        .map_err(|e| format!("Failed to decode stdout as UTF-8: {}", e))?;
-
-    if !output.status.success() {
-        println!("⚠️ Python script stderr: {}", stderr_output);
-        return Err(format!(
-            "Python scraping script error (exit code: {:?}): {}\n\
-            Script stderr: {}",
-            output.status.code(),
-            stdout_output,
-            stderr_output
-        ));
-    }
-
-    println!("🐍 Hybrid Python stderr (info): {}", stderr_output);
-    println!("🐍 Hybrid Python stdout: {}", stdout_output);
-
-    if stdout_output.trim().is_empty() {
-        return Err(format!(
-            "Python script returned empty output for {}. \n\
-            Stderr: {}",
-            symbol, stderr_output
-        ));
-    }
-
-    let profile: CompanyProfile = serde_json::from_str(&stdout_output).map_err(|e| {
+    let profile: CompanyProfile = serde_json::from_str(&stdout).map_err(|e| {
         format!(
-            "Failed to parse Python output for {}: {}\n\
-                Raw output: {}\n\
-                Parse error: {}",
-            symbol, e, stdout_output, e
+            "Failed to parse Python output for {}: {}\nRaw output: {}",
+            symbol, e, stdout
         )
     })?;
 
@@ -929,6 +677,309 @@ async fn fetch_japanese_stock_profile_hybrid(symbol: String) -> Result<CompanyPr
     );
 
     Ok(profile)
+}
+
+/// TDnetから日本株のIR情報を取得
+#[tauri::command]
+async fn fetch_japanese_ir_info(symbol: String) -> Result<serde_json::Value, String> {
+    println!(
+        "📋 Fetching Japanese IR info from TDnet for: {}",
+        symbol
+    );
+
+    let script_path = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?
+        .join("../scripts/fetch_tdnet.py");
+
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &[&symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
+
+    serde_json::from_str(&stdout).map_err(|e| {
+        format!(
+            "TDnet JSON parse error: {}. Raw output: {}",
+            e,
+            if stdout.len() > 500 { &stdout[..500] } else { &stdout }
+        )
+    })
+}
+
+/// Finnhub APIから決算カレンダーを取得
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EarningsCalendarItem {
+    pub symbol: String,
+    pub date: String,
+    #[serde(default)]
+    pub eps_actual: Option<f64>,
+    #[serde(default)]
+    pub eps_estimate: Option<f64>,
+    #[serde(default)]
+    pub revenue_actual: Option<f64>,
+    #[serde(default)]
+    pub revenue_estimate: Option<f64>,
+    #[serde(default)]
+    pub hour: String,
+    #[serde(default)]
+    pub quarter: i32,
+    #[serde(default)]
+    pub year: i32,
+}
+
+#[tauri::command]
+async fn fetch_earnings_calendar_with_key(
+    from: String,
+    to: String,
+    api_key: String,
+) -> Result<Vec<EarningsCalendarItem>, String> {
+    if api_key.is_empty() || api_key == "demo" {
+        return Err("有効なAPIキーが設定されていません".to_string());
+    }
+
+    let url = format!(
+        "https://finnhub.io/api/v1/calendar/earnings?from={}&to={}&token={}",
+        from, to, api_key
+    );
+
+    println!("📅 Fetching earnings calendar: {} ~ {}", from, to);
+
+    let response = HTTP_CLIENT
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Finnhub API request timed out: {}", e)
+            } else {
+                format!("Finnhub API request failed: {}", e)
+            }
+        })?;
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+    let mut items = Vec::new();
+
+    if let Some(earnings_array) = json["earningsCalendar"].as_array() {
+        for earning in earnings_array {
+            items.push(EarningsCalendarItem {
+                symbol: earning["symbol"].as_str().unwrap_or("").to_string(),
+                date: earning["date"].as_str().unwrap_or("").to_string(),
+                eps_actual: earning["epsActual"].as_f64(),
+                eps_estimate: earning["epsEstimate"].as_f64(),
+                revenue_actual: earning["revenueActual"].as_f64(),
+                revenue_estimate: earning["revenueEstimate"].as_f64(),
+                hour: earning["hour"].as_str().unwrap_or("").to_string(),
+                quarter: earning["quarter"].as_i64().unwrap_or(0) as i32,
+                year: earning["year"].as_i64().unwrap_or(0) as i32,
+            });
+        }
+    }
+
+    println!("✅ Fetched {} earnings calendar items", items.len());
+
+    Ok(items)
+}
+
+#[tauri::command]
+async fn fetch_earnings_calendar(from: String, to: String) -> Result<Vec<EarningsCalendarItem>, String> {
+    let api_key = std::env::var("FINNHUB_API_KEY").unwrap_or_else(|_| "demo".to_string());
+
+    let url = format!(
+        "https://finnhub.io/api/v1/calendar/earnings?from={}&to={}&token={}",
+        from, to, api_key
+    );
+
+    println!("📅 Fetching earnings calendar: {} ~ {}", from, to);
+
+    let response = HTTP_CLIENT
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Earnings calendar API request timed out: {}", e)
+            } else {
+                format!("Earnings calendar API request failed: {}", e)
+            }
+        })?;
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse earnings calendar JSON: {}", e))?;
+
+    let mut items = Vec::new();
+
+    if let Some(earnings_array) = json.get("earningsCalendar").and_then(|v| v.as_array()) {
+        for item in earnings_array {
+            let symbol = item["symbol"].as_str().unwrap_or("").to_string();
+            if symbol.is_empty() {
+                continue;
+            }
+
+            items.push(EarningsCalendarItem {
+                symbol,
+                date: item["date"].as_str().unwrap_or("").to_string(),
+                eps_actual: item["epsActual"].as_f64(),
+                eps_estimate: item["epsEstimate"].as_f64(),
+                revenue_actual: item["revenueActual"].as_f64(),
+                revenue_estimate: item["revenueEstimate"].as_f64(),
+                hour: item["hour"].as_str().unwrap_or("").to_string(),
+                quarter: item["quarter"].as_i64().unwrap_or(0) as i32,
+                year: item["year"].as_i64().unwrap_or(0) as i32,
+            });
+        }
+    }
+
+    println!("✅ Fetched {} earnings calendar items", items.len());
+
+    Ok(items)
+}
+
+/// TDnet等のPDFをプロキシ経由でダウンロードし、Base64で返す（リトライ付き）
+#[tauri::command]
+async fn proxy_fetch_pdf(url: String) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    println!("📄 Proxy fetching PDF: {}", url);
+
+    // PDF用クライアント（タイムアウト30秒）
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    // 最大2回リトライ
+    let max_retries = 2;
+    let mut last_error = String::new();
+
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            let delay = 2000u64 * (1u64 << (attempt - 1));
+            println!(
+                "⏳ PDF retry {}/{} after {}ms delay...",
+                attempt, max_retries, delay
+            );
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+        }
+
+        match client
+            .get(&url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .header("Accept", "application/pdf,*/*")
+            .header("Accept-Language", "ja,en-US;q=0.5")
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if !response.status().is_success() {
+                    last_error = format!("PDF fetch returned status: {}", response.status());
+                    // 4xx エラーはリトライしない
+                    if response.status().is_client_error() {
+                        return Err(last_error);
+                    }
+                    continue;
+                }
+
+                let bytes = response
+                    .bytes()
+                    .await
+                    .map_err(|e| format!("Failed to read PDF bytes: {}", e))?;
+
+                if bytes.is_empty() {
+                    last_error = "PDF response was empty".to_string();
+                    continue;
+                }
+
+                println!("✅ PDF fetched successfully: {} bytes", bytes.len());
+
+                let base64_data = STANDARD.encode(&bytes);
+                return Ok(base64_data);
+            }
+            Err(e) => {
+                if e.is_timeout() {
+                    last_error = format!("PDF fetch timed out: {}", e);
+                } else {
+                    last_error = format!("PDF fetch failed: {}", e);
+                }
+                continue;
+            }
+        }
+    }
+
+    Err(format!(
+        "PDF fetch failed after {} retries: {}",
+        max_retries, last_error
+    ))
+}
+
+/// 複数銘柄の株価を高速バッチ取得（セクターヒートマップ用）
+/// fetch_multiple_quotes とは異なり、取得できなかった銘柄は無視して返す
+/// レート制限回避のため、1銘柄あたり1.5秒の間隔を空ける
+#[tauri::command]
+async fn fetch_sector_quotes(symbols: Vec<String>) -> Result<Vec<StockQuote>, String> {
+    println!("📊 Fetching sector quotes for {} symbols", symbols.len());
+
+    let mut all_quotes = Vec::new();
+    let mut consecutive_rate_limits = 0u32;
+
+    for (index, symbol) in symbols.iter().enumerate() {
+        // 最初のリクエスト以降は待機
+        if index > 0 {
+            // 連続でレート制限を受けた場合、待機時間を延長
+            let delay = if consecutive_rate_limits >= 3 {
+                5000u64 // 3回連続429なら5秒待機
+            } else if consecutive_rate_limits >= 1 {
+                3000u64 // 1回でも429なら3秒待機
+            } else {
+                1500u64 // 通常は1.5秒間隔
+            };
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+        }
+
+        match fetch_stock_quote(symbol.clone()).await {
+            Ok(quote) => {
+                consecutive_rate_limits = 0; // 成功したらカウントリセット
+                all_quotes.push(quote);
+            }
+            Err(e) => {
+                if e.contains("429") || e.contains("Rate limited") {
+                    consecutive_rate_limits += 1;
+                    eprintln!(
+                        "⚠️ Rate limited for {} (consecutive: {})",
+                        symbol, consecutive_rate_limits
+                    );
+                } else {
+                    consecutive_rate_limits = 0;
+                    eprintln!("⚠️ Skipping {}: {}", symbol, e);
+                }
+            }
+        }
+
+        // 進捗ログ（10銘柄ごと）
+        if (index + 1) % 10 == 0 {
+            println!(
+                "📊 Progress: {}/{} symbols fetched ({} successful)",
+                index + 1,
+                symbols.len(),
+                all_quotes.len()
+            );
+        }
+    }
+
+    println!(
+        "✅ Fetched {}/{} sector quotes",
+        all_quotes.len(),
+        symbols.len()
+    );
+    Ok(all_quotes)
 }
 
 /// スクレイピング + API の複合手法で日本株のセンチメントを取得
@@ -943,56 +994,17 @@ async fn fetch_japanese_stock_sentiment_hybrid(symbol: String) -> Result<NewsSen
         .map_err(|e| format!("Failed to get current directory: {}", e))?
         .join("../scripts/scrape_japanese_stock.py");
 
-    if !script_path.exists() {
-        return Err(format!("Scraping script not found: {:?}", script_path));
-    }
+    let (stdout, _stderr) = run_python_script_with_timeout(
+        &script_path,
+        &["sentiment", &symbol],
+        PYTHON_SCRIPT_TIMEOUT_SECS,
+    )
+    .await?;
 
-    let output = std::process::Command::new("python")
-        .arg("-X")
-        .arg("utf8") // UTF-8モードを強制
-        .arg(script_path.clone())
-        .arg("sentiment")
-        .arg(&symbol)
-        .output()
-        .map_err(|e| {
-            format!(
-                "Failed to execute Python scraping script: {}. \n\
-                Script path: {:?}\n\
-                Make sure Python is installed and available in PATH.",
-                e, script_path
-            )
-        })?;
-
-    let stderr_output = String::from_utf8(output.stderr)
-        .map_err(|e| format!("Failed to decode stderr as UTF-8: {}", e))?;
-    let stdout_output = String::from_utf8(output.stdout)
-        .map_err(|e| format!("Failed to decode stdout as UTF-8: {}", e))?;
-
-    if !output.status.success() {
-        println!("⚠️ Python script stderr: {}", stderr_output);
-        return Err(format!(
-            "Python scraping script error (exit code: {:?}): {}\n\
-            Script stderr: {};",
-            output.status.code(),
-            stdout_output,
-            stderr_output
-        ));
-    }
-
-    if stdout_output.trim().is_empty() {
-        return Err(format!(
-            "Python script returned empty sentiment output for {}. \n\
-            Stderr: {}",
-            symbol, stderr_output
-        ));
-    }
-
-    let sentiment: NewsSentiment = serde_json::from_str(&stdout_output).map_err(|e| {
+    let sentiment: NewsSentiment = serde_json::from_str(&stdout).map_err(|e| {
         format!(
-            "Failed to parse Python sentiment output for {}: {}\n\
-                Raw output: {}\n\
-                Parse error: {}",
-            symbol, e, stdout_output, e
+            "Failed to parse Python sentiment output for {}: {}\nRaw output: {}",
+            symbol, e, stdout
         )
     })?;
 
@@ -1009,22 +1021,21 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
             fetch_stock_quote,
             fetch_stock_history,
             fetch_multiple_quotes,
-            fetch_stock_quote_alpha_vantage,
-            fetch_stock_history_alpha_vantage,
-            fetch_company_profile_finnhub,
-            fetch_news_sentiment_finnhub,
+            fetch_sector_quotes,
             fetch_company_news_finnhub,
-            fetch_japanese_stock_profile,
-            fetch_japanese_stock_sentiment,
+            fetch_company_news_finnhub_with_key,
+            fetch_japanese_ir_info,
             fetch_japanese_stock_profile_hybrid,
             fetch_japanese_stock_sentiment_hybrid,
             fetch_japanese_stock_comprehensive,
             fetch_japanese_stock_price,
-            fetch_japanese_stock_chart
+            fetch_japanese_stock_chart,
+            proxy_fetch_pdf,
+            fetch_earnings_calendar,
+            fetch_earnings_calendar_with_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

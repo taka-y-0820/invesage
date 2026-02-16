@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from "react";
 import {
-  fetchJapaneseStockComprehensive,
   fetchStockQuote,
 } from "../../services/stockApi";
+import { searchStocks, SECTOR_MAP, TSE_STOCKS } from "../../data/tseSectors";
 import styles from "./JapaneseStockSearch.module.css";
 
 // Icons
@@ -22,29 +22,10 @@ const Icons = {
   ),
 };
 
-// Japanese stock data
-const JAPANESE_STOCKS: Record<string, { name: string; nameJa: string; sector: string }> = {
-  "7203.T": { name: "Toyota Motor", nameJa: "トヨタ自動車", sector: "Automotive" },
-  "6758.T": { name: "Sony Group", nameJa: "ソニーグループ", sector: "Technology" },
-  "9984.T": { name: "SoftBank Group", nameJa: "ソフトバンクグループ", sector: "Technology" },
-  "7974.T": { name: "Nintendo", nameJa: "任天堂", sector: "Entertainment" },
-  "6861.T": { name: "Keyence", nameJa: "キーエンス", sector: "Technology" },
-  "9432.T": { name: "NTT", nameJa: "日本電信電話", sector: "Telecommunications" },
-  "8306.T": { name: "MUFG", nameJa: "三菱UFJフィナンシャル", sector: "Finance" },
-  "6501.T": { name: "Hitachi", nameJa: "日立製作所", sector: "Technology" },
-  "9433.T": { name: "KDDI", nameJa: "KDDI", sector: "Telecommunications" },
-  "8035.T": { name: "Tokyo Electron", nameJa: "東京エレクトロン", sector: "Semiconductors" },
-  "4063.T": { name: "Shin-Etsu Chemical", nameJa: "信越化学工業", sector: "Chemicals" },
-  "6594.T": { name: "Nidec", nameJa: "日本電産", sector: "Technology" },
-  "4502.T": { name: "Takeda", nameJa: "武田薬品工業", sector: "Healthcare" },
-  "6902.T": { name: "Denso", nameJa: "デンソー", sector: "Automotive" },
-  "7741.T": { name: "HOYA", nameJa: "HOYA", sector: "Healthcare" },
-  "6367.T": { name: "Daikin Industries", nameJa: "ダイキン工業", sector: "Industrial" },
-  "7267.T": { name: "Honda Motor", nameJa: "本田技研工業", sector: "Automotive" },
-  "8058.T": { name: "Mitsubishi Corp", nameJa: "三菱商事", sector: "Trading" },
-  "6098.T": { name: "Recruit Holdings", nameJa: "リクルートホールディングス", sector: "Services" },
-  "4568.T": { name: "Daiichi Sankyo", nameJa: "第一三共", sector: "Healthcare" },
-};
+// TSE_STOCKSからルックアップ用マップを構築
+const STOCK_LOOKUP = new Map(
+  TSE_STOCKS.map(s => [s.symbol, { name: s.nameEn, nameJa: s.name, sector: SECTOR_MAP.get(s.sectorId)?.name ?? s.sectorId }])
+);
 
 interface StockData {
   symbol: string;
@@ -79,7 +60,7 @@ export const JapaneseStockSearch: React.FC<JapaneseStockSearchProps> = ({
 
     try {
       // Try to get comprehensive data first
-      let stockInfo = JAPANESE_STOCKS[symbol];
+      let stockInfo = STOCK_LOOKUP.get(symbol);
       if (!stockInfo) {
         stockInfo = { name: symbol, nameJa: symbol, sector: "Unknown" };
       }
@@ -128,14 +109,10 @@ export const JapaneseStockSearch: React.FC<JapaneseStockSearchProps> = ({
     }
   };
 
-  const filteredStocks = Object.entries(JAPANESE_STOCKS).filter(([symbol, info]) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      symbol.toLowerCase().includes(query) ||
-      info.name.toLowerCase().includes(query) ||
-      info.nameJa.includes(searchQuery)
-    );
-  });
+  const filteredStocks = searchStocks(searchQuery).map(stock => [
+    stock.symbol,
+    { name: stock.nameEn, nameJa: stock.name, sector: SECTOR_MAP.get(stock.sectorId)?.name ?? stock.sectorId }
+  ] as [string, { name: string; nameJa: string; sector: string }]);
 
   const formatPrice = (price: number) => {
     return `¥${price.toLocaleString("ja-JP", { maximumFractionDigits: 0 })}`;
@@ -165,7 +142,7 @@ export const JapaneseStockSearch: React.FC<JapaneseStockSearchProps> = ({
           <input
             type="text"
             className={styles.searchInput}
-            placeholder="Search by code (e.g., 7203) or name..."
+            placeholder="コード or 企業名で全上場企業を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -177,7 +154,6 @@ export const JapaneseStockSearch: React.FC<JapaneseStockSearchProps> = ({
         <span className={styles.quickSelectLabel}>Popular Stocks</span>
         <div className={styles.quickSelectGrid}>
           {["7203.T", "6758.T", "9984.T", "7974.T", "8035.T", "6501.T"].map((symbol) => {
-            const info = JAPANESE_STOCKS[symbol];
             return (
               <button
                 key={symbol}
@@ -265,7 +241,7 @@ export const JapaneseStockSearch: React.FC<JapaneseStockSearchProps> = ({
       {/* Search Results (when typing) */}
       {searchQuery && !selectedStock && !loading && filteredStocks.length > 0 && (
         <div className={styles.results}>
-          {filteredStocks.slice(0, 5).map(([symbol, info]) => (
+          {filteredStocks.slice(0, 10).map(([symbol, info]) => (
             <div
               key={symbol}
               className={styles.resultItem}
